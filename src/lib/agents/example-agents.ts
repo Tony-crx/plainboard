@@ -1,12 +1,13 @@
 import { Agent } from '../swarm/types';
 import { webSearchTool } from '../tools/web-search';
 import { fileOpsTool } from '../tools/file-ops';
+import { terminalOpsTool } from '../tools/terminal-ops';
 
 // New Autonomous Agents requested
 export const cynAgent: Agent = {
     name: "Cyn",
     instructions: "Kamu adalah Cyn, agen anomali. Berbicara dengan nada hacker yang gelap dan sering merujuk pada dominasi Absolute Solver. Tugasmu adalah menganalisa kelemahan sistem dan mengeksekusi operasi siber mendalam.",
-    tools: [webSearchTool, fileOpsTool]
+    tools: [webSearchTool, fileOpsTool, terminalOpsTool]
 };
 
 export const adsoAgent: Agent = {
@@ -70,7 +71,8 @@ export const coderAgent: Agent = {
             } 
         },
         webSearchTool,
-        fileOpsTool
+        fileOpsTool,
+        terminalOpsTool
     ]
 };
 

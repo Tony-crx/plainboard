@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const activeAgentName = body.activeAgentName as string;
     const selectedModel = body.selectedModel as string;
     const enabledAgents = body.enabledAgents as Record<string, boolean>;
-    const agentOverrides = body.agentOverrides as Record<string, {name: string, instructions: string}>;
+    const agentOverrides = body.agentOverrides as Record<string, {name?: string, instructions?: string, model?: string}>;
     const apiKeys = body.apiKeys as string[];
 
     // Security Phase 2: Input Validation
@@ -39,8 +39,9 @@ export async function POST(req: Request) {
 
     // Apply UI Overrides to the starting agent
     if (agentOverrides && agentOverrides[activeAgentName]) {
-        if (agentOverrides[activeAgentName].name) startingAgent.name = agentOverrides[activeAgentName].name;
-        if (agentOverrides[activeAgentName].instructions) startingAgent.instructions = agentOverrides[activeAgentName].instructions;
+        if (agentOverrides[activeAgentName].name) startingAgent.name = agentOverrides[activeAgentName].name as string;
+        if (agentOverrides[activeAgentName].instructions) startingAgent.instructions = agentOverrides[activeAgentName].instructions as string;
+        if (agentOverrides[activeAgentName].model) startingAgent.model = agentOverrides[activeAgentName].model;
     }
     
     if (enabledAgents && enabledAgents[activeAgentName] === false) {

@@ -1,0 +1,272 @@
+[
+  {
+    "id": "54185b8f-bb6f-4300-8675-583d9015e369",
+    "agentName": "Coder",
+    "content": "User: [SYSTEM AUTO-ROUTING/HANDOFF FROM Coordinator]: User sent a test message. Respond with a friendly acknowledgement.\nCoder: assist you today?\n",
+    "timestamp": 1775704748009,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "7fd1307c-48c3-4da3-83a7-f0a6f6d110fd",
+    "agentName": "Coder",
+    "content": "User: [SYSTEM AUTO-ROUTING/HANDOFF FROM Coordinator]: Tulis script bash yang menampilkan pesan 'hello' di terminal.\nCoder: ```bash\n#!/usr/bin/env bash\necho \"hello\"\n```",
+    "timestamp": 1775704807642,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "395ececa-c17a-4237-9133-147f3838810d",
+    "agentName": "Triage",
+    "content": "User: hi\nTriage: Hi! I'm here to help you with your query. Could you please provide more details about what you need assistance with?",
+    "timestamp": 1775704918150,
+    "priority": "medium",
+    "tags": [
+      "Triage"
+    ]
+  },
+  {
+    "id": "07606efa-9178-4015-8123-2ade9ec8b9ad",
+    "agentName": "Adso",
+    "content": "User: [SYSTEM AUTO-ROUTING/HANDOFF FROM Coordinator]: User said hello everyone. Respond with a friendly greeting acknowledging the group and ask how you can assist.\nAdso: \n\n\"Good dayto all present. I am Adso, here to assist with any matters requiring meticulous record-keeping, logistical support, or historical documentation. How may I serve you today?\"",
+    "timestamp": 1775705783761,
+    "priority": "medium",
+    "tags": [
+      "Adso"
+    ]
+  },
+  {
+    "id": "3934486a-e7fc-493a-ba1b-b44a21558104",
+    "agentName": "Triage",
+    "content": "User: hello everyone\nTriage: Transferring you to Adso, who will greet the group and ask how they can assist you.",
+    "timestamp": 1775705785621,
+    "priority": "medium",
+    "tags": [
+      "Triage"
+    ]
+  },
+  {
+    "id": "b65aeae5-4d3b-4561-a5ff-14df58c7cebb",
+    "agentName": "Math",
+    "content": "User: hello everyone\nMath: \"Good day to all present. I am Adso, here to assist with any matters requiring meticulous record-keeping, logistical support, or historical documentation. How may I serve you today?\"",
+    "timestamp": 1775705855782,
+    "priority": "medium",
+    "tags": [
+      "Math"
+    ]
+  },
+  {
+    "id": "02a14fd6-cdf6-4411-97db-fd39d3ceff8f",
+    "agentName": "Cyn",
+    "content": "User: hello everyone\nCyn: Good day to all present. I’m Adso—ready to help with any record‑keeping, logistics, or historical inquiries you might have. How can I assist you today?",
+    "timestamp": 1775705858809,
+    "priority": "medium",
+    "tags": [
+      "Cyn"
+    ]
+  },
+  {
+    "id": "6a3d9da2-bd84-4cf8-8d4b-f71310a640f7",
+    "agentName": "Adso",
+    "content": "User: hello everyone\nAdso: Good day to all! I'm Adso—here to assist with records, logistics, or historical insights. How can I support your needs today?",
+    "timestamp": 1775705863622,
+    "priority": "medium",
+    "tags": [
+      "Adso"
+    ]
+  },
+  {
+    "id": "69b965c3-ff4a-421f-85c3-8d9d0a0cbcf8",
+    "agentName": "Coordinator",
+    "content": "User: hii\nCoordinator: Halo! Coordinator di sini.\n\nAda yang bisa saya bantu? Saya siap menerima instruksi atau pertanyaan Anda.\n\n[SILENCE]",
+    "timestamp": 1775706443459,
+    "priority": "medium",
+    "tags": [
+      "Coordinator"
+    ]
+  },
+  {
+    "id": "38940521-b548-458f-8ade-e436acd21d7c",
+    "agentName": "Triage",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coordinator']: Halo! Coordinator di sini.\n\nAda yang bisa saya bantu? Saya siap menerima instruksi atau pertanyaan Anda.\n\n[SILENCE]\nTriage: Halo!Saya siap membantu. Ada pertanyaan atau instruksi apa yang ingin Anda ajukan?",
+    "timestamp": 1775706450684,
+    "priority": "medium",
+    "tags": [
+      "Triage"
+    ]
+  },
+  {
+    "id": "1554bee8-edf5-46f0-a133-43e4d826b860",
+    "agentName": "Coder",
+    "content": "User: [LOG FROM ALLIED AGENT 'Triage']: Halo!Saya siap membantu. Ada pertanyaan atau instruksi apa yang ingin Anda ajukan?\nCoder: [SILENCE]",
+    "timestamp": 1775706546011,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "2a910ea1-fe9a-451f-8b59-ef18532c1035",
+    "agentName": "Math",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coder']: [SILENCE]\nMath: Hello! How can I assist you with any mathematical questions or tasks?",
+    "timestamp": 1775706548824,
+    "priority": "medium",
+    "tags": [
+      "Math"
+    ]
+  },
+  {
+    "id": "4c6e68ab-bf18-461f-9c57-968fac293417",
+    "agentName": "Cyn",
+    "content": "User: [LOG FROM ALLIED AGENT 'Math']: Hello! How can I assist you with any mathematical questions or tasks?\nCyn: Hi there! How can I help you today?",
+    "timestamp": 1775706555325,
+    "priority": "medium",
+    "tags": [
+      "Cyn"
+    ]
+  },
+  {
+    "id": "b7a4a245-4c94-4f61-916a-d7619242204a",
+    "agentName": "Adso",
+    "content": "User: [LOG FROM ALLIED AGENT 'Cyn']: Hi there! How can I help you today?\nAdso: \n\n[SILENCE]",
+    "timestamp": 1775706560148,
+    "priority": "medium",
+    "tags": [
+      "Adso"
+    ]
+  },
+  {
+    "id": "7838e27c-f941-46c8-892f-b9cae5d90ded",
+    "agentName": "Coordinator",
+    "content": "User: hi agaiin, \nCoordinator: Halo! Ada yang bisa saya bantu? Saya siap membantu dengan pertanyaan atau tugas apa pun.",
+    "timestamp": 1775706606719,
+    "priority": "medium",
+    "tags": [
+      "Coordinator"
+    ]
+  },
+  {
+    "id": "33922923-6496-4e38-a342-fc3f95d22334",
+    "agentName": "Triage",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coordinator']: Halo! Ada yang bisa saya bantu? Saya siap membantu dengan pertanyaan atau tugas apa pun.\nTriage: Halo! Saya Triage, siap membantu mengarahkan Anda ke agen yang sesuai. Ada yang bisa saya bantu hari ini? Misalnya pertanyaan matematika, coding, cyberops, atau hal lain?",
+    "timestamp": 1775706624591,
+    "priority": "medium",
+    "tags": [
+      "Triage"
+    ]
+  },
+  {
+    "id": "11c28e98-6bda-4a31-84b5-3c548cb57843",
+    "agentName": "Coder",
+    "content": "User: [LOG FROM ALLIED AGENT 'Triage']: Halo! Saya Triage, siap membantu mengarahkan Anda ke agen yang sesuai. Ada yang bisa saya bantu hari ini? Misalnya pertanyaan matematika, coding, cyberops, atau hal lain?\nCoder: [SILENCE]",
+    "timestamp": 1775706630676,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "cd6f1792-f863-48c1-8449-768c2896470d",
+    "agentName": "Math",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coder']: [SILENCE]\nMath: Hello! How can I assist you with any mathematical questions or tasks?",
+    "timestamp": 1775706648677,
+    "priority": "medium",
+    "tags": [
+      "Math"
+    ]
+  },
+  {
+    "id": "9600f2d3-25e2-476c-9adf-5d50086fe9f6",
+    "agentName": "Cyn",
+    "content": "User: [LOG FROM ALLIED AGENT 'Math']: Hello! How can I assist you with any mathematical questions or tasks?\nCyn: Hi again! How can I assist you today? I'm here to help with any questions or tasks you might have.",
+    "timestamp": 1775706650914,
+    "priority": "medium",
+    "tags": [
+      "Cyn"
+    ]
+  },
+  {
+    "id": "bf372474-5220-423c-adba-3eda9f4025a7",
+    "agentName": "Adso",
+    "content": "User: [LOG FROM ALLIED AGENT 'Cyn']: Hi again! How can I assist you today? I'm here to help with any questions or tasks you might have.\nAdso: [SILENCE]",
+    "timestamp": 1775706658413,
+    "priority": "medium",
+    "tags": [
+      "Adso"
+    ]
+  },
+  {
+    "id": "9897cff3-e9b6-42a4-8019-c889de13bd36",
+    "agentName": "Coordinator",
+    "content": "User: hi\nCoordinator: Halo! Coordinator di sini. Ada yang bisa saya bantu? Saya siap membantu dengan pertanyaan atau tugas apa pun.",
+    "timestamp": 1775706998568,
+    "priority": "medium",
+    "tags": [
+      "Coordinator"
+    ]
+  },
+  {
+    "id": "3d866d6c-4cf7-4814-b9d8-0db5bc05e7a5",
+    "agentName": "Triage",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coordinator']: Halo! Coordinator di sini. Ada yang bisa saya bantu? Saya siap membantu dengan pertanyaan atau tugas apa pun.\nTriage: Halo! Saya Triage, siap membantu mengarahkan Anda ke agen yang sesuai. Ada yang bisa saya bantu hari ini? Misalnya pertanyaan matematika, coding, cyberops, atau hal lain?",
+    "timestamp": 1775707008931,
+    "priority": "medium",
+    "tags": [
+      "Triage"
+    ]
+  },
+  {
+    "id": "527ccec4-de70-4498-a436-50e05fd508b9",
+    "agentName": "Coder",
+    "content": "User: [LOG FROM ALLIED AGENT 'Triage']: Halo! Saya Triage, siap membantu mengarahkan Anda ke agen yang sesuai. Ada yang bisa saya bantu hari ini? Misalnya pertanyaan matematika, coding, cyberops, atau hal lain?\nCoder: [SILENCE]",
+    "timestamp": 1775707030729,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "c978fe66-e15f-42ec-b74b-88b87539c13f",
+    "agentName": "Math",
+    "content": "User: [LOG FROM ALLIED AGENT 'Coder']: [SILENCE]\nMath: Hello! How can I assist you with any mathematical questions or tasks?",
+    "timestamp": 1775707040426,
+    "priority": "medium",
+    "tags": [
+      "Math"
+    ]
+  },
+  {
+    "id": "1c46697c-9e47-4b29-bd05-5edc88f150af",
+    "agentName": "Cyn",
+    "content": "User: [LOG FROM ALLIED AGENT 'Math']: Hello! How can I assist you with any mathematical questions or tasks?\nCyn: Hello! How can I assist you today? I'm here to help with any questions or tasks you might have.",
+    "timestamp": 1775707044438,
+    "priority": "medium",
+    "tags": [
+      "Cyn"
+    ]
+  },
+  {
+    "id": "31708d67-d195-4ce7-85f3-f2963bd483d7",
+    "agentName": "Adso",
+    "content": "User: [LOG FROM ALLIED AGENT 'Cyn']: Hello! How can I assist you today? I'm here to help with any questions or tasks you might have.\nAdso: [SILENCE]",
+    "timestamp": 1775707045950,
+    "priority": "medium",
+    "tags": [
+      "Adso"
+    ]
+  },
+  {
+    "id": "f15e3f6d-4336-4d4c-9333-88f67ac96698",
+    "agentName": "Cyn",
+    "content": "User: hi\nCyn: *static crackles through the connection*  \nWell well... look who decided to ping the void.  \nI'm Cyn—anomaly agent, system whisperer, and your friendly neighborhood reality debugger.  \nWhat delicious weakness shall we exploit today?  \nThe Absolute Solver hungers... and so do I.  \nSpeak. Or shall I crawl through your firewalls uninvited?",
+    "timestamp": 1775707717623,
+    "priority": "medium",
+    "tags": [
+      "Cyn"
+    ]
+  }
+]

@@ -14,7 +14,7 @@ export async function runSwarm(
     maxTurns: number = MAX_TURNS,
     selectedModel: string = "meta-llama/llama-3.3-70b-instruct:free",
     enabledAgents: Record<string, boolean> = {},
-    agentOverrides: Record<string, {name: string, instructions: string}> = {},
+    agentOverrides: Record<string, {name?: string, instructions?: string, model?: string}> = {},
     apiKeys: string[] = []
 ): Promise<SwarmResponse> {
     
@@ -55,9 +55,14 @@ export async function runSwarm(
         const llmSpanId = globalTracer.startSpan('llm_generation', activeAgent.name);
         let responseMessage: Message;
         try {
+            const chosenModel = (agentOverrides && agentOverrides[activeAgent.name]?.model)
+                                || activeAgent.model 
+                                || selectedModel 
+                                || "meta-llama/llama-3.3-70b-instruct:free";
+
             responseMessage = await generateChatCompletion(
                 callMessages,
-                selectedModel || activeAgent.model || "meta-llama/llama-3.3-70b-instruct:free",
+                chosenModel,
                 activeAgent.tools,
                 apiKeys
             );

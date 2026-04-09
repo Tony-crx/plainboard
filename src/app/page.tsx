@@ -41,10 +41,11 @@ export default function SuperDashboard() {
   const [isMcpOpen, setIsMcpOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
+  const [isWarRoomMode, setIsWarRoomMode] = useState(false);
   
   // Customizations
   const [apiKeys, setApiKeys] = useState<string[]>([]);
-  const [agentOverrides, setAgentOverrides] = useState<Record<string, {name: string, instructions: string}>>({});
+  const [agentOverrides, setAgentOverrides] = useState<Record<string, {name?: string, instructions?: string, model?: string}>>({});
   const [enabledAgents, setEnabledAgents] = useState<Record<string, boolean>>({
      "Coordinator": true, "Triage": true, "Coder": true, "Math": true, "Cyn": true, "Adso": true
   });
@@ -53,7 +54,7 @@ export default function SuperDashboard() {
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [agentMemories, viewingAgent, isLoading]);
+  }, [agentMemories, viewingAgent, isLoading, isWarRoomMode]);
 
   useEffect(() => {
      try {
@@ -81,9 +82,89 @@ export default function SuperDashboard() {
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    let targetAgent = viewingAgent;
-    // Explicit Mentions override logic (@agent)
     const activeAgentsNames = Object.keys(enabledAgents).filter(k=>enabledAgents[k]);
+    const userMessage: Message = { role: 'user', content: inputMessage };
+    
+    setInputMessage("");
+    setIsLoading(true);
+
+    if (isWarRoomMode) {
+         setViewingAgent("WarRoom");
+         setActiveRoutingAgent("WarRoom");
+         let currentThread = [...(agentMemories["WarRoom"] || [])];
+         currentThread.push(userMessage);
+
+         setAgentMemories((prev: any) => ({ ...prev, WarRoom: [...currentThread] }));
+
+         for (let i = 0; i < activeAgentsNames.length; i++) {
+              const agentName = activeAgentsNames[i];
+              setActiveRoutingAgent(agentName); // For UI Typing indicator
+              
+              if (i > 0) {
+                 // War Room Rate Limit Pacing (4 seconds) to avoid OpenRouter Free-tier 429 limits
+                 await new Promise(res => setTimeout(res, 4000));
+              }
+
+              try {
+                  const localizedThread = currentThread.map(msg => {
+                      if (msg.role === 'assistant' && msg.name !== agentName) {
+                          return {
+                              ...msg,
+                              role: 'user',
+                              content: `[LOG FROM ALLIED AGENT '${msg.name || "Unknown"}']: ${msg.content}`
+                          } as Message;
+                      }
+                      return msg;
+                  });
+                  
+                  const warRoomOverrides = JSON.parse(JSON.stringify(agentOverrides));
+                  const bName = warRoomOverrides[agentName]?.name || agentName;
+                  if (!warRoomOverrides[agentName]) warRoomOverrides[agentName] = {};
+                  
+                  const baseInstructions = warRoomOverrides[agentName].instructions || ALL_PROFILES.find(p => p.name === agentName)?.desc || "";
+                  warRoomOverrides[agentName].instructions = `[WAR ROOM PROTOCOL ACTIVE: You are in a shared terminal. Your identity is strictly ${bName}. You must NEVER pretend to be another agent. Read the user's prompt and allied agents' logs. If you have nothing valuable to add to the objective, reply exactly with the word: [SILENCE]. Otherwise, speak your mind.]\n\n${baseInstructions}`;
+
+                  const res = await fetch('/api/chat', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                         agentMemories: { [agentName]: localizedThread }, 
+                         activeAgentName: agentName, 
+                         selectedModel,
+                         enabledAgents,
+                         agentOverrides: warRoomOverrides,
+                         apiKeys
+                      })
+                  });
+                  if (!res.ok) throw new Error(await res.text());
+                  const data = await res.json();
+                  
+                  // Extract what the agent just generated
+                  const agentLogs = data.agentMemories[agentName] || [];
+                  const newResponses = agentLogs.slice(currentThread.length);
+                  
+                  currentThread = [...currentThread, ...newResponses];
+                  setAgentMemories((prev: any) => ({ ...prev, WarRoom: [...currentThread] }));
+              } catch(e: any) {
+                  currentThread.push({ role: 'system', content: `[WAR ROOM ERROR - ${agentName}]: ${e.message}` });
+                  setAgentMemories((prev: any) => ({ ...prev, WarRoom: [...currentThread] }));
+                  
+                  if (e.message.includes("Circuit breaker is open") || e.message.includes("Rate limit") || e.message.includes("OpenRouter Error")) {
+                      currentThread.push({ role: 'system', content: `[WAR ROOM ABORT]: Rantai terputus. Traffic hulu (upstream) kelebihan batas atau ditolak.` });
+                      setAgentMemories((prev: any) => ({ ...prev, WarRoom: [...currentThread] }));
+                      break; // Terminate agent loop early
+                  }
+              }
+         }
+         setActiveRoutingAgent("WarRoom");
+         setIsLoading(false);
+         return;
+    }
+
+    let targetAgent = viewingAgent;
+    if (targetAgent === "WarRoom") targetAgent = "Coordinator"; // Fallback if toggled off
+
+    // Explicit Mentions override logic (@agent)
     for(const name of activeAgentsNames) {
         const checkName = (agentOverrides[name]?.name || name).toLowerCase();
         if(inputMessage.toLowerCase().includes(`@${checkName}`)) {
@@ -92,7 +173,6 @@ export default function SuperDashboard() {
         }
     }
 
-    const userMessage: Message = { role: 'user', content: inputMessage };
     setActiveRoutingAgent(targetAgent);
     setViewingAgent(targetAgent);
     
@@ -101,8 +181,6 @@ export default function SuperDashboard() {
     updatedMemories[targetAgent] = [...updatedMemories[targetAgent], userMessage];
     
     setAgentMemories(updatedMemories);
-    setInputMessage("");
-    setIsLoading(true);
 
     try {
       const res = await fetch('/api/chat', {
@@ -297,6 +375,13 @@ export default function SuperDashboard() {
               </span>
            </div>
            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer border border-red-900 px-3 py-1 bg-red-950/20 hover:bg-red-900/40 transition-colors">
+                  <input type="checkbox" checked={isWarRoomMode} onChange={(e) => {
+                       setIsWarRoomMode(e.target.checked);
+                       if(e.target.checked) setViewingAgent("WarRoom");
+                  }} className="accent-red-600 w-3 h-3"/>
+                  <span className="text-red-500 text-[10px] uppercase font-bold tracking-widest flex items-center gap-1">War Room</span>
+              </label>
               <CostDisplay />
               <ExportButton memories={currentMessages} agentName={viewingAgentName} />
            </div>
@@ -379,7 +464,7 @@ export default function SuperDashboard() {
       </AnimatePresence>
 
       <AnimatePresence>
-         {isConfigOpen && <AgentConfigurator frontendProfiles={ALL_PROFILES} enabledAgents={enabledAgents} setEnabledAgents={setEnabledAgents} agentOverrides={agentOverrides} setAgentOverrides={setAgentOverrides} isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />}
+         {isConfigOpen && <AgentConfigurator frontendProfiles={ALL_PROFILES} enabledAgents={enabledAgents} setEnabledAgents={setEnabledAgents} agentOverrides={agentOverrides} setAgentOverrides={setAgentOverrides} models={models} isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>

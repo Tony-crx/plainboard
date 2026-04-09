@@ -28,9 +28,9 @@ export async function generateChatCompletion(
   }
 
   const runCompletion = async (): Promise<Message> => {
-    return retryWithBackoff(
-      async () => {
-        return circuitBreaker.execute(async () => {
+    return circuitBreaker.execute(async () => {
+      return retryWithBackoff(
+        async () => {
             const keys = getKeyManager();
             const apiKey = (apiKeys && apiKeys.length > 0) ? apiKeys[Math.floor(Math.random() * apiKeys.length)] : keys.getNextKey();
             
@@ -74,8 +74,7 @@ export async function generateChatCompletion(
                globalCostTracker.recordUsage(model, data.usage.prompt_tokens || 0, data.usage.completion_tokens || 0, 'LLM_ENGINE');
             }
             return data.choices[0].message as Message;
-        });
-      },
+        },
       { 
           maxRetries: 3, 
           baseDelay: 1000,
@@ -83,18 +82,22 @@ export async function generateChatCompletion(
               if (err.message.includes('429')) return true;
               if (err.message.includes('Circuit breaker is open')) return false;
               if (err.message.includes('STRICT MODE VETO')) return false;
+              if (err.message.includes('No API keys')) return false;
+              if (err.message.includes('401')) return false; // Unauthorized implies invalid key, don't bang OpenRouter.
               return true; // network errors
           }
       }
     ).catch(err => {
-        // If all retries fail, add to Dead Letter Queue
+        // If all retries fail inside the circuit, bubble it up. The circuit breaker will catch this and increment its failure counter.
+        // It's crucial because Dead letter queues should only trigger if the final outer scope fails.
         globalDeadLetterQueue.add({
             agentName: 'LLM_ENGINE',
             payload: { model, messages },
             error: err.message,
-            attempts: 4, // 1 base + 3 retries
+            attempts: 4,
         });
         throw err;
+    });
     });
   };
 

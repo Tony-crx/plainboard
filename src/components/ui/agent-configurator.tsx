@@ -11,15 +11,17 @@ export function AgentConfigurator({
    enabledAgents,
    setEnabledAgents,
    agentOverrides,
-   setAgentOverrides
+   setAgentOverrides,
+   models
 }: { 
    isOpen: boolean, 
    onClose: () => void,
    frontendProfiles: any[],
    enabledAgents: Record<string, boolean>,
    setEnabledAgents: (v: any) => void,
-   agentOverrides: Record<string, {name: string, instructions: string}>,
-   setAgentOverrides: (v: any) => void
+   agentOverrides: Record<string, {name?: string, instructions?: string, model?: string}>,
+   setAgentOverrides: (v: any) => void,
+   models: any[]
 }) {
   
   const [editingAgent, setEditingAgent] = useState<string | null>(null);
@@ -99,6 +101,16 @@ export function AgentConfigurator({
                        )}
                        
                        <div className="text-[10px] uppercase font-mono tracking-widest text-red-900/80 mt-2">
+                          <select 
+                             value={override.model || ""}
+                             onChange={(e) => setAgentOverrides({ ...agentOverrides, [prof.name]: { ...override, model: e.target.value } })}
+                             className="w-full bg-[#050000] border border-red-900/50 p-1 mb-2 text-red-400 focus:outline-none"
+                          >
+                             <option value="">[MODEL: GLOBAL OVERRIDE FALLBACK]</option>
+                             {models.map((m: any) => (
+                                <option key={m.id} value={m.id}>{m.id}</option>
+                             ))}
+                          </select>
                           {prof.hasTools ? '[ EQUIP ] : Full Core Access' : '[ EQUIP ] : Restricted Routing'}
                        </div>
                    </div>
