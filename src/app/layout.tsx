@@ -19,6 +19,13 @@ export const metadata: Metadata = {
   title: "CortisolBoard | AI Swarm Command",
   description: "Multi-agent AI swarm orchestration platform. Real-time multi-agent orchestration with streaming, telemetry, and persistent memory.",
   keywords: ["AI", "swarm", "multi-agent", "LLM", "orchestration"],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Cortisol",
+  },
+  themeColor: "#8b0000",
 };
 
 export default function RootLayout({

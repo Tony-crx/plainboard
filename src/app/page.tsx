@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Activity, ShieldAlert, Code2, Calculator, MessageSquare, Flame, Database, Settings2, Network, UserCog, BookOpen, Key, ChevronDown, Plus, Trash2, Download } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Activity, ShieldAlert, Code2, Calculator, MessageSquare, Flame, Database, Settings2, Network, UserCog, BookOpen, Key, ChevronDown, Plus, Trash2, Download, ClipboardList, ScrollText, Terminal, Zap, Trophy, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { CompactSidebar } from '@/components/ui/compact-sidebar';
@@ -20,6 +20,47 @@ import { InputBar } from '@/components/ui/input-bar';
 import { exportConversationToMarkdown, calculateSessionTokenUsage, getLocalStorageUsage, shouldArchiveSession, getTotalMessageCount } from '@/lib/utils/export-utils';
 import { indexedDB, localStorageHelpers } from '@/lib/storage/indexeddb';
 import type { ErrorHistoryEntry } from '@/lib/storage/indexeddb';
+import { NeuralTopology3D, AgentNode3D, Connection3D } from '@/components/ui/neural-topology-3d';
+import { NeuralTopology2D, AgentNode2D, Connection2D } from '@/components/ui/neural-topology-2d';
+import { ActivityFeed, ActivityEntry } from '@/components/ui/activity-feed';
+import { MemoryBrowser } from '@/components/ui/memory-browser';
+import { useCostTracking } from '@/lib/utils/cost-tracker';
+import { validateInput } from '@/lib/security/input-validator';
+import { CommandPalette, useKeyboardShortcuts } from '@/components/ui/command-palette';
+import { TraceViewer } from '@/components/ui/trace-viewer';
+import { AgentCreator } from '@/components/ui/agent-creator';
+import { WarRoomVisualization } from '@/components/ui/war-room-visual';
+import { useMemoryCompression } from '@/lib/utils/memory-compression';
+import { TaskPanel } from '@/components/ui/task-panel';
+import { SessionSelector } from '@/components/ui/session-selector';
+import { ExportButton } from '@/components/ui/export-button';
+import { SkillBrowser } from '@/components/ui/skill-browser';
+import { PlanModeUI } from '@/components/ui/plan-mode-ui';
+import { PlanModeBadge } from '@/components/ui/plan-mode-badge';
+import { useTaskManager, useSessionManager } from '@/hooks';
+import { globalMessageBus } from '@/lib/communication/message-bus';
+import { globalTaskStore } from '@/lib/tasks/task-store';
+import { globalSkillRegistry } from '@/lib/skills/skill-registry';
+import { globalPlanModeManager } from '@/lib/permissions/plan-mode';
+import { WorkerLogPanel } from '@/components/ui/worker-log-panel';
+import { AuditLogDashboard } from '@/components/ui/audit-log-dashboard';
+import { MessageThreadTimeline } from '@/components/ui/message-thread-timeline';
+import { SessionReplayViewer } from '@/components/ui/session-replay-viewer';
+import { AgentLeaderboard } from '@/components/ui/agent-leaderboard';
+import { CronManager } from '@/components/ui/cron-manager';
+import { QuickCommands } from '@/components/ui/quick-commands';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { PIIWarning } from '@/components/ui/pii-warning';
+import { globalWorkerLogStore } from '@/lib/communication/worker-live-logs';
+import { globalSmartRouter } from '@/lib/swarm/smart-router';
+import { globalMemoryOptimizer } from '@/lib/memory/memory-optimizer';
+import { globalHealthMonitor } from '@/lib/observability/health-check';
+import { globalRateLimiter } from '@/lib/queue/rate-limiter';
+import { globalCronScheduler } from '@/lib/queue/cron-scheduler';
+import { promptTemplates, searchTemplates, PromptTemplate } from '@/lib/utils/prompt-templates';
+import { parseNaturalLanguage, NLCommandResult } from '@/lib/utils/natural-commands';
+import { multiTabSync } from '@/lib/communication/multi-tab-sync';
+import { sessionReplayRecorder } from '@/lib/observability/session-replay';
 
 interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -106,6 +147,81 @@ export default function SuperDashboard() {
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
   const [lastErrorAgent, setLastErrorAgent] = useState<string | null>(null);
 
+  // Activity feed
+  const [activityEntries, setActivityEntries] = useState<ActivityEntry[]>([]);
+  const [isActivityFeedOpen, setIsActivityFeedOpen] = useState(false);
+  const [isMemoryBrowserOpen, setIsMemoryBrowserOpen] = useState(false);
+
+  // New features state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isTraceViewerOpen, setIsTraceViewerOpen] = useState(false);
+  const [isAgentCreatorOpen, setIsAgentCreatorOpen] = useState(false);
+  const [showWarRoomVisual, setShowWarRoomVisual] = useState(false);
+  const [topologyMode, setTopologyMode] = useState<'3d' | '2d'>('3d');
+
+  // Custom agents
+  const [customAgents, setCustomAgents] = useState<Array<{ name: string; instructions: string; model: string; tools: string[]; temperature: number; maxTokens: number }>>([]);
+
+  // Memory compression
+  const { stats: memoryStats, compress, summarize } = useMemoryCompression(agentMemories, 100);
+
+  // Trace spans for debugging
+  const [traceSpans, setTraceSpans] = useState<any[]>([]);
+
+  // Cost tracking
+  const { totalCost, todayCost } = useCostTracking(agentMemories);
+
+  // Task manager (workers, notifications, progress)
+  const taskManager = useTaskManager({ pollInterval: 3000 });
+  const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false);
+
+  // Session manager (persistence, restore)
+  const sessionManager = useSessionManager();
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  // Dead component state
+  const [isExportButtonVisible, setIsExportButtonVisible] = useState(true);
+
+  // Skill system
+  const [isSkillBrowserOpen, setIsSkillBrowserOpen] = useState(false);
+
+  // Plan mode
+  const [planModeState, setPlanModeState] = useState(globalPlanModeManager.getState());
+  const [isPlanModeUIOpen, setIsPlanModeUIOpen] = useState(false);
+
+  // New Phase 2-6 features
+  const [isWorkerLogOpen, setIsWorkerLogOpen] = useState(false);
+  const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [activeTabCount, setActiveTabCount] = useState(1);
+
+  // Phase 7+ new features
+  const [isSessionReplayOpen, setIsSessionReplayOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isCronManagerOpen, setIsCronManagerOpen] = useState(false);
+  const [isThemeToggleVisible, setIsThemeToggleVisible] = useState(true);
+
+  // Prompt templates
+  const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Poll plan mode state + tab count
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlanModeState(globalPlanModeManager.getState());
+      setActiveTabCount(multiTabSync.getTabCount());
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const addActivity = useCallback((entry: Omit<ActivityEntry, 'id' | 'timestamp'>) => {
+    setActivityEntries(prev => [...prev, {
+      ...entry,
+      id: `activity_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      timestamp: Date.now()
+    }].slice(-200)); // Keep last 200 entries
+  }, []);
+
   // Markdown export options
   const [showExportOptions, setShowExportOptions] = useState(false);
 
@@ -119,10 +235,6 @@ export default function SuperDashboard() {
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [agentMemories, viewingAgent, isLoading, isWarRoomMode]);
-
   // Auto-archive sessions older than 30 days or with >500 messages
   const autoArchiveSessions = useCallback(async () => {
     setSessions(prev => {
@@ -135,7 +247,6 @@ export default function SuperDashboard() {
         return s;
       });
       if (changed) {
-        // Persist to IndexedDB
         updated.forEach(async (s) => {
           try { await indexedDB.saveSession(s as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
         });
@@ -143,6 +254,532 @@ export default function SuperDashboard() {
       return updated;
     });
   }, []);
+
+  // Generate a descriptive session name
+  const generateSessionName = (firstMessage?: string): string => {
+    if (firstMessage && firstMessage.trim()) {
+      const truncated = firstMessage.trim().substring(0, 50);
+      return truncated.length < firstMessage.trim().length ? `${truncated}...` : truncated;
+    }
+    return `Session ${new Date().toLocaleString()}`;
+  };
+
+  // Create new chat session
+  const createNewSession = async () => {
+    const newSession: ChatSession = {
+      id: `session_${Date.now()}`,
+      name: generateSessionName(),
+      pinned: false,
+      archived: false,
+      createdAt: Date.now(),
+      agentMemories: { "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] },
+      selectedModel: selectedModel,
+      bookmarkedMessageIds: []
+    };
+
+    const updatedSessions = [newSession, ...sessions];
+    setSessions(updatedSessions);
+    setSessionId(newSession.id);
+    setAgentMemories(newSession.agentMemories);
+    setActiveRoutingAgent("Coordinator");
+    setViewingAgent("Coordinator");
+    try { await indexedDB.saveSession(newSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+    localStorageHelpers.setActiveSessionId(newSession.id);
+  };
+
+  // Save current session
+  const saveCurrentSession = async () => {
+    if (!sessionId) return;
+    const updatedSessions = sessions.map(s =>
+      s.id === sessionId ? { ...s, agentMemories, selectedModel } : s
+    );
+    setSessions(updatedSessions);
+    const current = updatedSessions.find(s => s.id === sessionId);
+    if (current) {
+      try { await indexedDB.saveSession(current as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+    }
+  };
+
+  // Load a session
+  const loadSession = (session: ChatSession) => {
+    setSessionId(session.id);
+    setAgentMemories(session.agentMemories);
+    setSelectedModel(session.selectedModel);
+    localStorageHelpers.setActiveSessionId(session.id);
+  };
+
+  // Delete a session
+  const deleteSession = async (sessionToDelete: string) => {
+    const updatedSessions = sessions.filter(s => s.id !== sessionToDelete);
+    setSessions(updatedSessions);
+    try { await indexedDB.deleteSession(sessionToDelete); } catch (e) { /* ignore */ }
+    if (sessionToDelete === sessionId) {
+      if (updatedSessions.length > 0) {
+        loadSession(updatedSessions[0]);
+      } else {
+        createNewSession();
+      }
+    }
+  };
+
+  // Rename a session
+  const renameSession = async (sessionIdToRename: string, newName: string) => {
+    if (!newName.trim()) return;
+    const updatedSession = sessions.find(s => s.id === sessionIdToRename);
+    if (!updatedSession) return;
+    const renamedSession = { ...updatedSession, name: newName.trim() };
+    const updatedSessions = sessions.map(s => s.id === sessionIdToRename ? renamedSession : s);
+    setSessions(updatedSessions);
+    try { await indexedDB.saveSession(renamedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+    setEditingSessionId(null);
+    setEditingName('');
+  };
+
+  // Toggle pin on a session
+  const togglePinSession = async (sessionIdToToggle: string) => {
+    const updatedSession = sessions.find(s => s.id === sessionIdToToggle);
+    if (!updatedSession) return;
+    const toggledSession = { ...updatedSession, pinned: !updatedSession.pinned };
+    const updatedSessions = sessions.map(s => s.id === sessionIdToToggle ? toggledSession : s);
+    setSessions(updatedSessions);
+    try { await indexedDB.saveSession(toggledSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+  };
+
+  // Delete session with confirmation
+  const deleteSessionWithConfirmation = async (sessionToDelete: string) => {
+    if (deleteConfirmId === sessionToDelete) {
+      await deleteSession(sessionToDelete);
+      setDeleteConfirmId(null);
+    } else {
+      setDeleteConfirmId(sessionToDelete);
+    }
+  };
+
+  // Confirm deletion
+  const confirmDelete = async () => {
+    if (deleteConfirmId) {
+      await deleteSession(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  // Cancel deletion
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
+  };
+
+  // --- New Component Handlers ---
+
+  // Session management via new session manager
+  const handleSelectSession = useCallback(async (sessionId: string) => {
+    const session = await sessionManager.loadSession(sessionId);
+    if (session) {
+      setActiveSessionId(sessionId);
+      setAgentMemories(session.agentMemories);
+      setViewingAgent(session.activeAgentName || 'Coordinator');
+      setActiveRoutingAgent(session.activeAgentName || 'Coordinator');
+      setSelectedModel(session.selectedModel || selectedModel);
+    }
+  }, [sessionManager]);
+
+  const handleCreateSession = useCallback(async (name?: string) => {
+    const id = await sessionManager.createSession(name);
+    if (id) {
+      setActiveSessionId(id);
+      // Reset memories
+      setAgentMemories({ "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] });
+      setViewingAgent('Coordinator');
+      setActiveRoutingAgent('Coordinator');
+    }
+    return id;
+  }, [sessionManager]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    await sessionManager.deleteSession(sessionId);
+    if (activeSessionId === sessionId) setActiveSessionId(null);
+  }, [sessionManager, activeSessionId]);
+
+  // Export handler
+  const handleExportMemories = useCallback(() => {
+    // ExportButton component handles this internally
+  }, []);
+
+  // Skill execution
+  const handleExecuteSkill = useCallback(async (skillName: string, args?: Record<string, string>) => {
+    const result = await globalSkillRegistry.execute(skillName, args);
+    addActivity({
+      type: result.success ? 'success' : 'error',
+      agent: 'Skill',
+      message: result.success ? `Executed skill: ${skillName}` : `Skill failed: ${skillName}`,
+      metadata: { skill: skillName, outputLength: result.output.length }
+    });
+    // Inject skill output into current agent's memory
+    if (result.success && result.messages.length > 0) {
+      const updatedMemories = { ...agentMemories };
+      if (!updatedMemories[viewingAgent]) updatedMemories[viewingAgent] = [];
+      updatedMemories[viewingAgent].push(...result.messages as any);
+      setAgentMemories(updatedMemories);
+    }
+  }, [agentMemories, viewingAgent, addActivity]);
+
+  // Plan mode handlers
+  const handleEnterPlanMode = useCallback(() => {
+    const state = globalPlanModeManager.enter('default');
+    setPlanModeState(state);
+    setIsPlanModeUIOpen(true);
+    addActivity({
+      type: 'info',
+      agent: 'System',
+      message: 'Plan mode activated',
+      metadata: {}
+    });
+  }, [addActivity]);
+
+  const handleUpdatePlan = useCallback((content: string) => {
+    globalPlanModeManager.updatePlan(content);
+    setPlanModeState(globalPlanModeManager.getState());
+  }, []);
+
+  const handleApprovePlan = useCallback(() => {
+    const result = globalPlanModeManager.approveAndExit();
+    setPlanModeState(globalPlanModeManager.getState());
+    setIsPlanModeUIOpen(false);
+    addActivity({
+      type: 'success',
+      agent: 'System',
+      message: `Plan approved and implemented. Returned to ${result.previousMode} mode.`,
+      metadata: {}
+    });
+  }, [addActivity]);
+
+  const handleCancelPlan = useCallback(() => {
+    globalPlanModeManager.cancel();
+    setPlanModeState(globalPlanModeManager.getState());
+    setIsPlanModeUIOpen(false);
+    addActivity({
+      type: 'warning',
+      agent: 'System',
+      message: 'Plan cancelled',
+      metadata: {}
+    });
+  }, [addActivity]);
+
+  // Natural Language Command Handler
+  const handleNaturalCommand = useCallback((result: NLCommandResult) => {
+    switch (result.target) {
+      case 'taskPanel': setIsTaskPanelOpen(true); break;
+      case 'skillBrowser': setIsSkillBrowserOpen(true); break;
+      case 'workerLogs': setIsWorkerLogOpen(true); break;
+      case 'timeline': setIsTimelineOpen(true); break;
+      case 'auditLog': setIsAuditLogOpen(true); break;
+      case 'activityFeed': setIsActivityFeedOpen(true); break;
+      case 'memoryBrowser': setIsMemoryBrowserOpen(true); break;
+      case 'planMode': setIsPlanModeUIOpen(true); break;
+      case 'newSession': createNewSession(); break;
+      case 'clearSession':
+        setAgentMemories({ "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] });
+        break;
+      case 'stopTask':
+        if (result.payload?.taskId) taskManager.stopTask(result.payload.taskId as string);
+        break;
+      default:
+        if (result.responseMessage) {
+          addActivity({ type: 'info', agent: 'Command', message: result.responseMessage, metadata: {} });
+        }
+    }
+  }, [addActivity, taskManager]);
+
+  // Start cron scheduler on mount
+  useEffect(() => {
+    globalCronScheduler.start();
+    return () => globalCronScheduler.stop();
+  }, []);
+
+  // Session Timeout -- auto-logout after 30 minutes of inactivity
+  useEffect(() => {
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const resetTimeout = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        if (isAuthenticated) {
+          setIsAuthenticated(false);
+          addActivity({
+            type: 'warning',
+            agent: 'System',
+            message: 'Session timed out due to inactivity',
+            metadata: { timeout: TIMEOUT_MS }
+          });
+        }
+      }, TIMEOUT_MS);
+    };
+
+    // Reset on any user interaction
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach(event => window.addEventListener(event, resetTimeout));
+    resetTimeout();
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetTimeout));
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isAuthenticated, addActivity]);
+
+  // Auto-save session persistence
+
+  // Generate a unique message ID
+  const generateMessageId = (agentName: string, index: number): string => {
+    return `${agentName}_${index}`;
+  };
+
+  // Edit a user message
+  const editMessage = (agentName: string, messageId: string, newContent: string) => {
+    if (!newContent.trim()) return;
+    const updatedMemories = { ...agentMemories };
+    const messages = [...(updatedMemories[agentName] || [])];
+    const parts = messageId.split('_');
+    const index = parseInt(parts[parts.length - 1], 10);
+    if (isNaN(index) || index < 0 || index >= messages.length) return;
+    messages[index] = { ...messages[index], content: newContent.trim() };
+    updatedMemories[agentName] = messages;
+    setAgentMemories(updatedMemories);
+    setEditingMessageId(null);
+    setEditingMessageContent('');
+  };
+
+  // Delete any message
+  const deleteMessage = async (agentName: string, messageId: string) => {
+    const updatedMemories = { ...agentMemories };
+    const messages = [...(updatedMemories[agentName] || [])];
+    const parts = messageId.split('_');
+    const index = parseInt(parts[parts.length - 1], 10);
+    if (isNaN(index) || index < 0 || index >= messages.length) return;
+    messages.splice(index, 1);
+    updatedMemories[agentName] = messages;
+    setAgentMemories(updatedMemories);
+    setDeleteMessageConfirmId(null);
+    const currentSession = sessions.find(s => s.id === sessionId);
+    if (currentSession) {
+      const updatedBookmarks = currentSession.bookmarkedMessageIds.filter(id => id !== messageId);
+      const updatedSession = { ...currentSession, bookmarkedMessageIds: updatedBookmarks };
+      const updatedSessions = sessions.map(s => s.id === sessionId ? updatedSession : s);
+      setSessions(updatedSessions);
+      try { await indexedDB.saveSession(updatedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+    }
+  };
+
+  // Copy message content to clipboard
+  const copyMessage = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      const textArea = document.createElement('textarea');
+      textArea.value = content;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    }
+  };
+
+  // Toggle bookmark on a message
+  const toggleBookmark = async (agentName: string, messageId: string) => {
+    const currentSession = sessions.find(s => s.id === sessionId);
+    if (!currentSession) return;
+    const isBookmarked = currentSession.bookmarkedMessageIds.includes(messageId);
+    let updatedBookmarks: string[];
+    if (isBookmarked) {
+      updatedBookmarks = currentSession.bookmarkedMessageIds.filter(id => id !== messageId);
+    } else {
+      updatedBookmarks = [...currentSession.bookmarkedMessageIds, messageId];
+    }
+    const updatedSession = { ...currentSession, bookmarkedMessageIds: updatedBookmarks };
+    const updatedSessions = sessions.map(s => s.id === sessionId ? updatedSession : s);
+    setSessions(updatedSessions);
+    try { await indexedDB.saveSession(updatedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+  };
+
+  // Start editing a message
+  const startEditingMessage = (agentName: string, messageId: string, content: string) => {
+    setEditingMessageId(messageId);
+    setEditingMessageContent(content);
+  };
+
+  // Cancel editing a message
+  const cancelEditingMessage = () => {
+    setEditingMessageId(null);
+    setEditingMessageContent('');
+  };
+
+  // Start editing a session name
+  const startEditing = (session: ChatSession) => {
+    setEditingSessionId(session.id);
+    setEditingName(session.name);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingSessionId(null);
+    setEditingName('');
+  };
+
+  // Dismiss error message
+  const dismissErrorMessage = (agentName: string, messageIndex: number) => {
+    const updatedMemories = { ...agentMemories };
+    const messages = updatedMemories[agentName] || [];
+    updatedMemories[agentName] = messages.filter((_, idx) => idx !== messageIndex);
+    setAgentMemories(updatedMemories);
+  };
+
+  // Log error to IndexedDB
+  const logError = async (agentName: string, errorMessage: string, context: string, userMessage?: string) => {
+    try {
+      const entry: ErrorHistoryEntry = {
+        id: `error_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        timestamp: Date.now(),
+        agentName,
+        errorMessage,
+        context,
+        lastUserMessage: userMessage || lastUserMessage || undefined,
+        sessionId: sessionId || undefined,
+      };
+      await indexedDB.addErrorEntry(entry);
+    } catch (e) {
+      console.error('Failed to log error:', e);
+    }
+  };
+
+  // Retry the last failed message
+  const retryLastMessage = async () => {
+    if (!lastUserMessage || !lastErrorAgent || isLoading) return;
+    setRetryingMessage(lastUserMessage);
+    setInputMessage(lastUserMessage);
+    setViewingAgent(lastErrorAgent);
+    setActiveRoutingAgent(lastErrorAgent);
+    await new Promise(r => setTimeout(r, 50));
+    const prevInputMessage = lastUserMessage;
+    setLastUserMessage(null);
+    setLastErrorAgent(null);
+    setRetryingMessage(null);
+    setInputMessage(prevInputMessage);
+    await sendMessage();
+  };
+
+  // Clear error history
+  const clearErrorHistory = async () => {
+    try { await indexedDB.clearErrorHistory(); } catch (e) { /* ignore */ }
+  };
+
+  // Cancel streaming
+  const cancelStreaming = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsLoading(false);
+      setStreamingContent('');
+    }
+  };
+
+  // Export current session to Markdown
+  const exportSessionToMarkdown = () => {
+    const currentSession = sessions.find(s => s.id === sessionId);
+    if (!currentSession) return;
+    exportConversationToMarkdown({
+      session: currentSession,
+      agentName: viewingAgent !== "WarRoom" ? viewingAgent : undefined,
+      includeMetadata: true,
+      includeTimestamps: true
+    });
+  };
+
+  // Archive a session
+  const archiveSession = async (sessionIdToArchive: string) => {
+    const updatedSession = sessions.find(s => s.id === sessionIdToArchive);
+    if (!updatedSession) return;
+    const archivedSession = { ...updatedSession, archived: true };
+    const updatedSessions = sessions.map(s => s.id === sessionIdToArchive ? archivedSession : s);
+    setSessions(updatedSessions);
+    try { await indexedDB.saveSession(archivedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+    if (sessionIdToArchive === sessionId) {
+      const nonArchived = updatedSessions.filter(s => !s.archived);
+      if (nonArchived.length > 0) {
+        loadSession(nonArchived[0]);
+      }
+    }
+  };
+
+  // Unarchive a session
+  const unarchiveSession = async (sessionIdToUnarchive: string) => {
+    const updatedSession = sessions.find(s => s.id === sessionIdToUnarchive);
+    if (!updatedSession) return;
+    const unarchivedSession = { ...updatedSession, archived: false };
+    const updatedSessions = sessions.map(s => s.id === sessionIdToUnarchive ? unarchivedSession : s);
+    setSessions(updatedSessions);
+    try { await indexedDB.saveSession(unarchivedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
+  };
+
+  // Export current session
+  const exportSession = () => {
+    const currentSession = sessions.find(s => s.id === sessionId);
+    if (!currentSession) return;
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      session: currentSession
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session-${currentSession.name.replace(/[^a-z0-9]/gi, '_')}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import session
+  const importSession = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importData = JSON.parse(content);
+        if (!importData.session || !importData.session.id) {
+          alert('Invalid session file format');
+          return;
+        }
+        const importedSession: ChatSession = {
+          id: `imported_${Date.now()}`,
+          name: importData.session.name || 'Imported Session',
+          pinned: importData.session.pinned ?? false,
+          archived: false,
+          createdAt: importData.session.createdAt || Date.now(),
+          agentMemories: importData.session.agentMemories || { "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] },
+          selectedModel: importData.session.selectedModel || selectedModel,
+          bookmarkedMessageIds: importData.session.bookmarkedMessageIds || []
+        };
+        const updatedSessions = [...sessions, importedSession];
+        setSessions(updatedSessions);
+        try { await indexedDB.saveSession(importedSession as unknown as Record<string, unknown>); } catch (err) { /* ignore */ }
+        loadSession(importedSession);
+      } catch (err) {
+        alert('Failed to import session: Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // NOW useEffect hooks AFTER all function declarations
+  useEffect(() => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [agentMemories, viewingAgent, isLoading, isWarRoomMode]);
 
   useEffect(() => {
     (async () => {
@@ -203,412 +840,6 @@ export default function SuperDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Generate a descriptive session name
-  const generateSessionName = (firstMessage?: string): string => {
-    if (firstMessage && firstMessage.trim()) {
-      const truncated = firstMessage.trim().substring(0, 50);
-      return truncated.length < firstMessage.trim().length ? `${truncated}...` : truncated;
-    }
-    return `Session ${new Date().toLocaleString()}`;
-  };
-
-  // Create new chat session
-  const createNewSession = async () => {
-    const newSession: ChatSession = {
-      id: `session_${Date.now()}`,
-      name: generateSessionName(),
-      pinned: false,
-      archived: false,
-      createdAt: Date.now(),
-      agentMemories: { "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] },
-      selectedModel: selectedModel,
-      bookmarkedMessageIds: []
-    };
-
-    const updatedSessions = [newSession, ...sessions];
-    setSessions(updatedSessions);
-    setSessionId(newSession.id);
-    setAgentMemories(newSession.agentMemories);
-    setActiveRoutingAgent("Coordinator");
-    setViewingAgent("Coordinator");
-    try { await indexedDB.saveSession(newSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-    localStorageHelpers.setActiveSessionId(newSession.id);
-  };
-
-  // Save current session
-  const saveCurrentSession = async () => {
-    if (!sessionId) return;
-
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionId
-        ? { ...s, agentMemories, selectedModel }
-        : s
-    );
-
-    setSessions(updatedSessions);
-    const current = updatedSessions.find(s => s.id === sessionId);
-    if (current) {
-      try { await indexedDB.saveSession(current as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-    }
-  };
-
-  // Load a session
-  const loadSession = (session: ChatSession) => {
-    setSessionId(session.id);
-    setAgentMemories(session.agentMemories);
-    setSelectedModel(session.selectedModel);
-    localStorageHelpers.setActiveSessionId(session.id);
-  };
-
-  // Delete a session
-  const deleteSession = async (sessionToDelete: string) => {
-    const updatedSessions = sessions.filter(s => s.id !== sessionToDelete);
-    setSessions(updatedSessions);
-    try { await indexedDB.deleteSession(sessionToDelete); } catch (e) { /* ignore */ }
-
-    // If deleted active session, create new one
-    if (sessionToDelete === sessionId) {
-      if (updatedSessions.length > 0) {
-        loadSession(updatedSessions[0]);
-      } else {
-        createNewSession();
-      }
-    }
-  };
-
-  // Rename a session
-  const renameSession = async (sessionIdToRename: string, newName: string) => {
-    if (!newName.trim()) return;
-    const updatedSession = sessions.find(s => s.id === sessionIdToRename);
-    if (!updatedSession) return;
-    const renamedSession = { ...updatedSession, name: newName.trim() };
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionIdToRename ? renamedSession : s
-    );
-    setSessions(updatedSessions);
-    try { await indexedDB.saveSession(renamedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-    setEditingSessionId(null);
-    setEditingName('');
-  };
-
-  // Toggle pin on a session
-  const togglePinSession = async (sessionIdToToggle: string) => {
-    const updatedSession = sessions.find(s => s.id === sessionIdToToggle);
-    if (!updatedSession) return;
-    const toggledSession = { ...updatedSession, pinned: !updatedSession.pinned };
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionIdToToggle ? toggledSession : s
-    );
-    setSessions(updatedSessions);
-    try { await indexedDB.saveSession(toggledSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-  };
-
-  // Delete session with confirmation
-  const deleteSessionWithConfirmation = async (sessionToDelete: string) => {
-    if (deleteConfirmId === sessionToDelete) {
-      // User confirmed
-      await deleteSession(sessionToDelete);
-      setDeleteConfirmId(null);
-    } else {
-      // Show confirmation
-      setDeleteConfirmId(sessionToDelete);
-    }
-  };
-
-  // Confirm deletion
-  const confirmDelete = async () => {
-    if (deleteConfirmId) {
-      await deleteSession(deleteConfirmId);
-      setDeleteConfirmId(null);
-    }
-  };
-
-  // Cancel deletion
-  const cancelDelete = () => {
-    setDeleteConfirmId(null);
-  };
-
-  // Generate a unique message ID
-  const generateMessageId = (agentName: string, index: number): string => {
-    return `${agentName}_${index}`;
-  };
-
-  // Edit a user message
-  const editMessage = (agentName: string, messageId: string, newContent: string) => {
-    if (!newContent.trim()) return;
-    const updatedMemories = { ...agentMemories };
-    const messages = [...(updatedMemories[agentName] || [])];
-    // Parse messageId to get index (format: "agentName_index")
-    const parts = messageId.split('_');
-    const index = parseInt(parts[parts.length - 1], 10);
-    if (isNaN(index) || index < 0 || index >= messages.length) return;
-    messages[index] = { ...messages[index], content: newContent.trim() };
-    updatedMemories[agentName] = messages;
-    setAgentMemories(updatedMemories);
-    setEditingMessageId(null);
-    setEditingMessageContent('');
-  };
-
-  // Delete any message
-  const deleteMessage = async (agentName: string, messageId: string) => {
-    const updatedMemories = { ...agentMemories };
-    const messages = [...(updatedMemories[agentName] || [])];
-    const parts = messageId.split('_');
-    const index = parseInt(parts[parts.length - 1], 10);
-    if (isNaN(index) || index < 0 || index >= messages.length) return;
-    messages.splice(index, 1);
-    updatedMemories[agentName] = messages;
-    setAgentMemories(updatedMemories);
-    setDeleteMessageConfirmId(null);
-
-    // Remove from bookmarks if bookmarked
-    const currentSession = sessions.find(s => s.id === sessionId);
-    if (currentSession) {
-      const updatedBookmarks = currentSession.bookmarkedMessageIds.filter(id => id !== messageId);
-      const updatedSession = { ...currentSession, bookmarkedMessageIds: updatedBookmarks };
-      const updatedSessions = sessions.map(s =>
-        s.id === sessionId ? updatedSession : s
-      );
-      setSessions(updatedSessions);
-      try { await indexedDB.saveSession(updatedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-    }
-  };
-
-  // Copy message content to clipboard
-  const copyMessage = async (content: string, messageId: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = content;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
-    }
-  };
-
-  // Toggle bookmark on a message
-  const toggleBookmark = async (agentName: string, messageId: string) => {
-    const currentSession = sessions.find(s => s.id === sessionId);
-    if (!currentSession) return;
-
-    const isBookmarked = currentSession.bookmarkedMessageIds.includes(messageId);
-    let updatedBookmarks: string[];
-    if (isBookmarked) {
-      updatedBookmarks = currentSession.bookmarkedMessageIds.filter(id => id !== messageId);
-    } else {
-      updatedBookmarks = [...currentSession.bookmarkedMessageIds, messageId];
-    }
-
-    const updatedSession = { ...currentSession, bookmarkedMessageIds: updatedBookmarks };
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionId ? updatedSession : s
-    );
-    setSessions(updatedSessions);
-    try { await indexedDB.saveSession(updatedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-  };
-
-  // Start editing a message
-  const startEditingMessage = (agentName: string, messageId: string, content: string) => {
-    setEditingMessageId(messageId);
-    setEditingMessageContent(content);
-  };
-
-  // Cancel editing a message
-  const cancelEditingMessage = () => {
-    setEditingMessageId(null);
-    setEditingMessageContent('');
-  };
-
-  // Start editing a session name
-  const startEditing = (session: ChatSession) => {
-    setEditingSessionId(session.id);
-    setEditingName(session.name);
-  };
-
-  // Cancel editing
-  const cancelEditing = () => {
-    setEditingSessionId(null);
-    setEditingName('');
-  };
-
-  // Dismiss error message
-  const dismissErrorMessage = (agentName: string, messageIndex: number) => {
-    const updatedMemories = { ...agentMemories };
-    const messages = updatedMemories[agentName] || [];
-    // Filter out the error message at the specific index
-    updatedMemories[agentName] = messages.filter((_, idx) => idx !== messageIndex);
-    setAgentMemories(updatedMemories);
-  };
-
-  // Log error to IndexedDB
-  const logError = async (agentName: string, errorMessage: string, context: string, userMessage?: string) => {
-    try {
-      const entry: ErrorHistoryEntry = {
-        id: `error_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-        timestamp: Date.now(),
-        agentName,
-        errorMessage,
-        context,
-        lastUserMessage: userMessage || lastUserMessage || undefined,
-        sessionId: sessionId || undefined,
-      };
-      await indexedDB.addErrorEntry(entry);
-    } catch (e) {
-      console.error('Failed to log error:', e);
-    }
-  };
-
-  // Retry the last failed message
-  const retryLastMessage = async () => {
-    if (!lastUserMessage || !lastErrorAgent || isLoading) return;
-
-    setRetryingMessage(lastUserMessage);
-    setInputMessage(lastUserMessage);
-    setViewingAgent(lastErrorAgent);
-    setActiveRoutingAgent(lastErrorAgent);
-
-    // Brief delay so state updates propagate
-    await new Promise(r => setTimeout(r, 50));
-
-    // Trigger send
-    const prevInputMessage = lastUserMessage;
-    setLastUserMessage(null);
-    setLastErrorAgent(null);
-    setRetryingMessage(null);
-
-    // Reuse sendMessage flow by setting input and calling it
-    setInputMessage(prevInputMessage);
-    await sendMessage();
-  };
-
-  // Clear error history
-  const clearErrorHistory = async () => {
-    try { await indexedDB.clearErrorHistory(); } catch (e) { /* ignore */ }
-  };
-
-  // Cancel streaming
-  const cancelStreaming = () => {
-    if (abortController) {
-      abortController.abort();
-      setAbortController(null);
-      setIsLoading(false);
-      setStreamingContent('');
-    }
-  };
-
-  // Export current session to Markdown
-  const exportSessionToMarkdown = () => {
-    const currentSession = sessions.find(s => s.id === sessionId);
-    if (!currentSession) return;
-    exportConversationToMarkdown({
-      session: currentSession,
-      agentName: viewingAgent !== "WarRoom" ? viewingAgent : undefined,
-      includeMetadata: true,
-      includeTimestamps: true
-    });
-  };
-
-  // Archive a session
-  const archiveSession = async (sessionIdToArchive: string) => {
-    const updatedSession = sessions.find(s => s.id === sessionIdToArchive);
-    if (!updatedSession) return;
-    const archivedSession = { ...updatedSession, archived: true };
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionIdToArchive ? archivedSession : s
-    );
-    setSessions(updatedSessions);
-    try { await indexedDB.saveSession(archivedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-
-    // If archiving active session, switch to first non-archived
-    if (sessionIdToArchive === sessionId) {
-      const nonArchived = updatedSessions.filter(s => !s.archived);
-      if (nonArchived.length > 0) {
-        loadSession(nonArchived[0]);
-      }
-    }
-  };
-
-  // Unarchive a session
-  const unarchiveSession = async (sessionIdToUnarchive: string) => {
-    const updatedSession = sessions.find(s => s.id === sessionIdToUnarchive);
-    if (!updatedSession) return;
-    const unarchivedSession = { ...updatedSession, archived: false };
-    const updatedSessions = sessions.map(s =>
-      s.id === sessionIdToUnarchive ? unarchivedSession : s
-    );
-    setSessions(updatedSessions);
-    try { await indexedDB.saveSession(unarchivedSession as unknown as Record<string, unknown>); } catch (e) { /* ignore */ }
-  };
-
-  // Export current session
-  const exportSession = () => {
-    const currentSession = sessions.find(s => s.id === sessionId);
-    if (!currentSession) return;
-
-    const exportData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      session: currentSession
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `session-${currentSession.name.replace(/[^a-z0-9]/gi, '_')}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Import session
-  const importSession = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const content = e.target?.result as string;
-        const importData = JSON.parse(content);
-
-        if (!importData.session || !importData.session.id) {
-          alert('Invalid session file format');
-          return;
-        }
-
-        const importedSession: ChatSession = {
-          id: `imported_${Date.now()}`,
-          name: importData.session.name || 'Imported Session',
-          pinned: importData.session.pinned ?? false,
-          archived: false,
-          createdAt: importData.session.createdAt || Date.now(),
-          agentMemories: importData.session.agentMemories || { "Coordinator": [], "Triage": [], "Coder": [], "Math": [], "Cyn": [], "Adso": [] },
-          selectedModel: importData.session.selectedModel || selectedModel,
-          bookmarkedMessageIds: importData.session.bookmarkedMessageIds || []
-        };
-
-        const updatedSessions = [...sessions, importedSession];
-        setSessions(updatedSessions);
-        try { await indexedDB.saveSession(importedSession as unknown as Record<string, unknown>); } catch (err) { /* ignore */ }
-
-        // Auto-load imported session
-        loadSession(importedSession);
-      } catch (err) {
-        alert('Failed to import session: Invalid JSON file');
-      }
-    };
-    reader.readAsText(file);
-    // Reset input
-    event.target.value = '';
-  };
-
   // Persist session data anytime it changes
   useEffect(() => {
     if (isClient && sessionId) {
@@ -665,9 +896,31 @@ export default function SuperDashboard() {
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
+    // Input validation
+    const validation = validateInput(inputMessage);
+    if (!validation.isValid) {
+      addActivity({
+        type: 'error',
+        agent: 'System',
+        message: `Input validation failed: ${validation.errors.join(', ')}`,
+        metadata: { riskLevel: validation.riskLevel }
+      });
+      return;
+    }
+
+    // Sanitize input
+    const sanitizedInput = validation.sanitized || inputMessage;
+
+    addActivity({
+      type: 'info',
+      agent: 'User',
+      message: `Message sent to ${viewingAgent}`,
+      metadata: { length: sanitizedInput.length }
+    });
+
     const activeAgentsNames = Object.keys(enabledAgents).filter(k => enabledAgents[k]);
-    const userMessage: Message = { role: 'user', content: inputMessage };
-    const messageText = inputMessage;
+    const userMessage: Message = { role: 'user', content: sanitizedInput };
+    const messageText = sanitizedInput;
 
     setInputMessage("");
     setIsLoading(true);
@@ -844,6 +1097,14 @@ export default function SuperDashboard() {
                   updatedMemories[targetAgent] = [...updatedMemories[targetAgent], assistantMessage];
                   setAgentMemories(updatedMemories);
                   setStreamingContent('');
+
+                  // Log activity
+                  addActivity({
+                    type: 'success',
+                    agent: targetAgent,
+                    message: `Response generated (${finalContent.length} chars)`,
+                    metadata: { tokens: Math.round(finalContent.length / 4) }
+                  });
                 } else if (parsed.error) {
                   throw new Error(parsed.error);
                 }
@@ -863,11 +1124,27 @@ export default function SuperDashboard() {
         setLastUserMessage(messageText);
         setLastErrorAgent(targetAgent);
         logError(targetAgent, err.message, 'Chat', messageText);
+
+        // Log error activity
+        addActivity({
+          type: 'error',
+          agent: targetAgent,
+          message: `Error: ${err.message}`,
+          metadata: { context: 'Chat' }
+        });
       }
     } finally {
       setIsLoading(false);
       setAbortController(null);
       setStreamingContent('');
+      // Auto-save session persistence
+      if (activeSessionId) {
+        sessionManager.saveSessionState(activeSessionId, {
+          agentMemories,
+          activeAgentName: viewingAgent,
+          selectedModel,
+        });
+      }
     }
   };
 
@@ -895,22 +1172,157 @@ export default function SuperDashboard() {
 
   const viewingAgentName = agentOverrides[viewingAgent]?.name || viewingAgent;
 
+  // Prepare 3D topology data
+  const topologyAgents = useMemo(() => {
+    const agentConfigs = [
+      { id: 'Coordinator', position: [0, 1.5, 0] as [number, number, number] },
+      { id: 'Triage', position: [-2, 0, 0] as [number, number, number] },
+      { id: 'Coder', position: [2, 0, 0] as [number, number, number] },
+      { id: 'Math', position: [-1.5, -1.5, 1] as [number, number, number] },
+      { id: 'Cyn', position: [1.5, -1.5, 1] as [number, number, number] },
+      { id: 'Adso', position: [0, -2, -1] as [number, number, number] },
+    ];
+
+    return agentConfigs.map((config) => {
+      const profile = ALL_PROFILES.find(p => p.name === config.id);
+      const isActiveEngine = activeRoutingAgent === config.id;
+      const msgCount = (agentMemories[config.id] || []).length;
+      const displayName = agentOverrides[config.id]?.name || config.id;
+
+      let status: AgentStatus = 'idle';
+      if (isActiveEngine && isLoading) {
+        status = 'thinking';
+      }
+
+      return {
+        id: config.id,
+        name: config.id,
+        displayName,
+        icon: profile?.icon || Network,
+        status,
+        position: config.position,
+        messageCount: msgCount,
+      } as AgentNode3D;
+    });
+  }, [activeRoutingAgent, isLoading, agentMemories, agentOverrides]);
+
+  const topologyConnections = useMemo(() => {
+    const conns: Connection3D[] = [
+      { from: 'Coordinator', to: 'Triage', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Triage' },
+      { from: 'Coordinator', to: 'Coder', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Coder' },
+      { from: 'Coordinator', to: 'Math', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Math' },
+      { from: 'Coordinator', to: 'Cyn', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Cyn' },
+      { from: 'Coordinator', to: 'Adso', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Adso' },
+      { from: 'Triage', to: 'Coder', active: false },
+      { from: 'Triage', to: 'Math', active: false },
+      { from: 'Triage', to: 'Cyn', active: false },
+    ];
+    return conns;
+  }, [activeRoutingAgent]);
+
+  // 2D Topology data (must be at top level, before any conditional returns)
+  const topology2DAgents = useMemo(() => {
+    // Hexagonal grid layout with proper spacing
+    const defaultAgentConfigs = [
+      { id: 'Coordinator', position: { x: 50, y: 20 } },  // Center top
+      { id: 'Triage', position: { x: 25, y: 40 } },       // Left middle
+      { id: 'Coder', position: { x: 75, y: 40 } },        // Right middle
+      { id: 'Math', position: { x: 25, y: 70 } },         // Left bottom
+      { id: 'Cyn', position: { x: 75, y: 70 } },          // Right bottom
+      { id: 'Adso', position: { x: 50, y: 85 } },         // Center bottom
+    ];
+
+    const defaultAgents = defaultAgentConfigs.map((config) => {
+      const profile = ALL_PROFILES.find(p => p.name === config.id);
+      const isActiveEngine = activeRoutingAgent === config.id;
+      const msgCount = (agentMemories[config.id] || []).length;
+      const displayName = agentOverrides[config.id]?.name || config.id;
+
+      let status: AgentStatus = 'idle';
+      if (isActiveEngine && isLoading) {
+        status = 'thinking';
+      }
+
+      return {
+        id: config.id,
+        name: config.id,
+        displayName,
+        icon: profile?.icon || Network,
+        status: status as 'idle' | 'thinking' | 'executing' | 'handoff' | 'error',
+        x: config.position.x,
+        y: config.position.y,
+        messageCount: msgCount,
+      } as AgentNode2D;
+    });
+
+    // Custom agents positioned below in a row with proper spacing
+    const customAgentNodes = customAgents.map((agent, idx) => ({
+      id: agent.name,
+      name: agent.name,
+      displayName: agent.name,
+      icon: Network,
+      status: 'idle' as const,
+      x: 20 + (idx * 25),  // Better spacing: 20%, 45%, 70%, etc.
+      y: 95,
+      messageCount: (agentMemories[agent.name] || []).length,
+      custom: true,
+    })) as AgentNode2D[];
+
+    return [...defaultAgents, ...customAgentNodes] as AgentNode2D[];
+  }, [activeRoutingAgent, isLoading, agentMemories, agentOverrides, customAgents]);
+
+  const topology2DConnections = useMemo(() => {
+    const conns: Connection2D[] = [
+      { from: 'Coordinator', to: 'Triage', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Triage' },
+      { from: 'Coordinator', to: 'Coder', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Coder' },
+      { from: 'Coordinator', to: 'Math', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Math' },
+      { from: 'Coordinator', to: 'Cyn', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Cyn' },
+      { from: 'Coordinator', to: 'Adso', active: activeRoutingAgent === 'Coordinator' || activeRoutingAgent === 'Adso' },
+      { from: 'Triage', to: 'Coder', active: false },
+      { from: 'Triage', to: 'Math', active: false },
+      { from: 'Triage', to: 'Cyn', active: false },
+    ];
+
+    customAgents.forEach(agent => {
+      conns.push({
+        from: 'Coordinator',
+        to: agent.name,
+        active: activeRoutingAgent === agent.name
+      });
+    });
+
+    return conns;
+  }, [activeRoutingAgent, customAgents]);
+
+  // Keyboard shortcuts (after all function declarations)
+  const shortcuts = useMemo(() => [
+    { key: 'k', modifiers: ['Cmd'], action: () => setIsCommandPaletteOpen(true), description: 'Open Command Palette', category: 'system' as const },
+    { key: 'n', modifiers: ['Cmd'], action: () => createNewSession(), description: 'New Session', category: 'sessions' as const },
+    { key: 'w', modifiers: ['Cmd'], action: () => setIsWarRoomMode(!isWarRoomMode), description: 'Toggle War Room', category: 'tools' as const },
+    { key: 'f', modifiers: ['Cmd'], action: () => setIsActivityFeedOpen(true), description: 'Open Activity Feed', category: 'tools' as const },
+    { key: 'm', modifiers: ['Cmd'], action: () => setIsMemoryBrowserOpen(true), description: 'Open Memory Browser', category: 'tools' as const },
+    { key: 'c', modifiers: ['Cmd', 'Shift'], action: () => setIsAgentCreatorOpen(true), description: 'Create Agent', category: 'agents' as const },
+    { key: 't', modifiers: ['Cmd'], action: () => setIsTelemetryOpen(true), description: 'Open Telemetry', category: 'tools' as const },
+  ], [isWarRoomMode]);
+
+  useKeyboardShortcuts(shortcuts);
+
   if (!isAuthenticated) {
     return (
       <div className="flex h-screen bg-black overflow-hidden relative font-mono text-red-500 items-center justify-center">
         {/* Background Image Layer */}
-        <div 
+        <div
           className="absolute inset-0 login-bg-image blur-[2px] scale-105 bg-cover bg-center"
-          style={{ backgroundImage: `url('/cyn.webp')` }} 
+          style={{ backgroundImage: `url('/cyn.webp')` }}
         />
         <div className="absolute inset-0 bg-black/60 z-0" />
         <div className="absolute inset-0 hud-vignette z-0" />
-        
+
         {/* Radar Ring */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] radar-ring z-10 opacity-30 pointer-events-none" />
-        
+
         {/* Auth Interface */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -929,7 +1341,7 @@ export default function SuperDashboard() {
 
             <div className="h-px w-full bg-gradient-to-r from-transparent via-red-600/50 to-transparent" />
 
-            <button 
+            <button
               onClick={() => setIsAuthenticated(true)}
               className="w-full group relative px-6 py-4 bg-red-950/40 hover:bg-red-900/40 transition-all duration-300 border border-red-900/50 hover:border-[#ff1a1a] overflow-hidden clip-angled"
             >
@@ -943,14 +1355,14 @@ export default function SuperDashboard() {
             </button>
           </div>
         </motion.div>
-        
+
         <div className="scanlines z-50 pointer-events-none" />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-[35%_65%] grid-rows-[60%_40%] h-screen bg-[#000000] overflow-hidden text-gray-300 relative p-6 gap-6" style={{ fontFamily: 'var(--font-display)' }}>
+    <div className="grid grid-cols-[35%_65%] grid-rows-[55%_45%] h-screen bg-[#000000] overflow-hidden text-gray-300 relative p-4 gap-4" style={{ fontFamily: 'var(--font-display)' }}>
       <div className="aurora-bg" />
       <div className="scanlines" />
 
@@ -1097,52 +1509,72 @@ export default function SuperDashboard() {
 
 
       {/* ═══════════════════════════════════════════════════════════════
-          PANEL 2: SWARM TOPOLOGY (Nodes) -> Top Right
+          PANEL 2: 3D NEURAL TOPOLOGY -> Top Right
       ═══════════════════════════════════════════════════════════════ */}
       <div className="col-start-2 col-end-3 row-start-1 row-end-2 w-full h-full flex flex-col z-10 border border-red-900/50 bg-[#080000] relative clip-angled custom-panel-glow">
         <div className="px-6 py-4 border-b border-red-900/30 flex items-center justify-between bg-black/40">
           <div className="flex items-center gap-2">
             <div className="pulse-dot" />
-            <div className="section-label tracking-[0.4em] text-red-500">Swarm Topology Grid</div>
+            <div className="section-label tracking-[0.4em] text-red-500">
+              {topologyMode === '3d' ? 'Neural Topology 3D' : 'Neural Topology 2D'}
+            </div>
           </div>
           <div className="flex gap-2">
-             <button onClick={() => setIsConfigOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Settings2 size={12} /></button>
-             <button onClick={() => setIsMcpOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Database size={12} /></button>
-             <button onClick={() => setIsApiSettingsOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Key size={12} /></button>
+            <button
+              onClick={() => setTopologyMode(topologyMode === '3d' ? '2d' : '3d')}
+              className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors text-[9px] font-mono uppercase"
+              title={`Switch to ${topologyMode === '3d' ? '2D' : '3D'} mode`}
+            >
+              {topologyMode === '3d' ? '2D' : '3D'}
+            </button>
+            <button onClick={() => setIsConfigOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Settings2 size={12} /></button>
+            <button onClick={() => setIsMcpOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Database size={12} /></button>
+            <button onClick={() => setIsApiSettingsOpen(true)} className="p-1 border border-red-900/30 text-red-800 hover:text-[#ff1a1a] transition-colors"><Key size={12} /></button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar p-6 grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {ALL_PROFILES.map((prof) => {
-            const Icon = prof.icon;
-            const isViewing = viewingAgent === prof.name;
-            const isActiveEngine = activeRoutingAgent === prof.name;
-            const msgCount = (agentMemories[prof.name] || []).length;
-            const displayName = agentOverrides[prof.name]?.name || prof.name;
+        {/* Neural Network Visualization */}
+        <div className="flex-1 relative">
+          {topologyMode === '3d' ? (
+            <NeuralTopology3D
+              agents={topologyAgents}
+              connections={topologyConnections}
+              onAgentClick={(agentId) => {
+                setViewingAgent(agentId);
+              }}
+            />
+          ) : (
+            <NeuralTopology2D
+              agents={topology2DAgents}
+              connections={topology2DConnections}
+              onAgentClick={(agentId) => {
+                setViewingAgent(agentId);
+              }}
+            />
+          )}
 
-            return (
-              <div
-                key={prof.name}
-                onClick={() => setViewingAgent(prof.name)}
-                className={`flex flex-col items-center justify-center p-4 border transition-all cursor-pointer clip-angled ${
-                  isViewing 
-                    ? 'border-[#ff1a1a] bg-red-950/20 shadow-[0_0_15px_rgba(255,0,0,0.15)] glow-border' 
-                    : 'border-red-900/20 hover:border-red-600/50 bg-black/40'
-                } ${!enabledAgents[prof.name] ? 'opacity-40' : ''}`}
-              >
-                <div className={`p-3 rounded-full mb-3 ${isActiveEngine && isLoading ? 'animate-pulse bg-[#ff1a1a]/20' : 'bg-red-950/40'}`}>
-                  <Icon size={24} className={isViewing ? 'text-[#ff1a1a]' : 'text-red-700'} />
-                </div>
-                <div className="text-[12px] font-black uppercase tracking-widest text-gray-300 text-center glow-text-sm">
-                  {displayName}
-                </div>
-                <div className="flex items-center gap-1 mt-2">
-                  <AgentStatusBadge status={isActiveEngine && isLoading ? 'thinking' : 'idle'} />
-                  {msgCount > 0 && <span className="text-[10px] text-red-900 ml-2 font-mono">[{msgCount}]</span>}
-                </div>
+          {/* Overlay legend (only for 3D mode, 2D has built-in legend) */}
+          {topologyMode === '3d' && (
+            <div className="absolute top-4 left-4 glass-panel-strong p-3 space-y-2">
+              <div className="text-[9px] text-red-500 font-mono uppercase tracking-widest mb-2">Legend</div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-600" />
+                <span className="text-[9px] text-gray-400 font-mono">Idle</span>
               </div>
-            );
-          })}
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                <span className="text-[9px] text-gray-400 font-mono">Thinking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-[9px] text-gray-400 font-mono">Executing</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-purple-500" />
+                <span className="text-[9px] text-gray-400 font-mono">Routing</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1150,68 +1582,198 @@ export default function SuperDashboard() {
           PANEL 3: TELEMETRY & ENGINE DECODER -> Bottom Right
       ═══════════════════════════════════════════════════════════════ */}
       <div className="col-start-2 col-end-3 row-start-2 row-end-3 w-full h-full flex z-10 border border-red-900/50 bg-[#060000] relative clip-angled custom-panel-glow">
-        
+
         {/* Radar Animation Left side */}
         <div className="w-1/3 border-r border-red-900/30 flex items-center justify-center relative overflow-hidden bg-black/60">
-           <div className="absolute inset-0 chat-grid-bg opacity-30" />
-           <div className="w-40 h-40 radar-ring opacity-40 absolute" />
-           <div className="w-64 h-64 radar-ring opacity-20 absolute" style={{ animationDirection: 'reverse', animationDuration: '20s' }} />
-           
-           <motion.div 
-             animate={{ rotate: 360 }}
-             transition={{ duration: 60, ease: "linear", repeat: Infinity }}
-             className="w-24 h-24 border-2 border-dashed border-[#ff1a1a]/50 rounded-full flex items-center justify-center relative z-10 bg-black/50 backdrop-blur-sm"
-           >
-             <Activity size={24} className="text-[#ff1a1a] animate-pulse glow-text" />
-             <div className="absolute inset-0 border border-[#ff1a1a] rounded-full scale-110 opacity-30" />
-           </motion.div>
+          <div className="absolute inset-0 chat-grid-bg opacity-30" />
+          <div className="w-40 h-40 radar-ring opacity-40 absolute" />
+          <div className="w-64 h-64 radar-ring opacity-20 absolute" style={{ animationDirection: 'reverse', animationDuration: '20s' }} />
+
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 60, ease: "linear", repeat: Infinity }}
+            className="w-24 h-24 border-2 border-dashed border-[#ff1a1a]/50 rounded-full flex items-center justify-center relative z-10 bg-black/50 backdrop-blur-sm"
+          >
+            <Activity size={24} className="text-[#ff1a1a] animate-pulse glow-text" />
+            <div className="absolute inset-0 border border-[#ff1a1a] rounded-full scale-110 opacity-30" />
+          </motion.div>
         </div>
 
         {/* Telemetry Right Side */}
-        <div className="flex-1 p-6 flex flex-col justify-between">
+        <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="section-label tracking-[0.3em]">Telemetry</div>
-              <button 
+              <button
                 onClick={() => setIsModelSelectorOpen(true)}
                 className="px-3 py-1 border border-red-900/50 text-[#c4c4c4] text-[10px] font-mono hover:bg-[#ff1a1a]/10 hover:border-[#ff1a1a] transition-all truncate max-w-[200px]"
               >
                 {selectedModel}
               </button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-6 mt-6">
-              <div className="border border-red-900/20 bg-black/40 p-4 clip-bottom-right">
-                <span className="text-[10px] text-red-600/70 uppercase block mb-1 font-bold">Context Limit</span>
-                <div className="text-xl font-mono text-gray-200">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="border border-red-900/20 bg-black/40 p-3 clip-bottom-right">
+                <span className="text-[9px] text-red-600/70 uppercase block mb-1 font-bold">Context Limit</span>
+                <div className="text-lg font-mono text-gray-200">
                   <span className={contextTokenCount > 100000 ? "text-red-500" : "text-[#c4c4c4]"}>{(contextTokenCount / 1000).toFixed(1)}k</span> <span className="text-red-900">/ 128k</span>
                 </div>
               </div>
-              <div className="border border-red-900/20 bg-black/40 p-4 clip-bottom-right">
-                <span className="text-[10px] text-red-600/70 uppercase block mb-1 font-bold">Engine State</span>
-                <div className={`text-xl font-mono ${isLoading ? "text-[#ff1a1a] animate-pulse glow-text-sm" : "text-gray-400"}`}>
+              <div className="border border-red-900/20 bg-black/40 p-3 clip-bottom-right">
+                <span className="text-[9px] text-red-600/70 uppercase block mb-1 font-bold">Engine State</span>
+                <div className={`text-lg font-mono ${isLoading ? "text-[#ff1a1a] animate-pulse glow-text-sm" : "text-gray-400"}`}>
                   {isLoading ? "PROCESSING" : "IDLE"}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-red-900/30 pt-4 flex gap-4">
-             <button
-               onClick={() => setIsWarRoomMode(!isWarRoomMode)}
-               className={`flex-1 py-2 text-[11px] uppercase font-black tracking-widest clip-angled transition-all border ${
-                 isWarRoomMode ? 'bg-[#ff1a1a]/20 border-[#ff1a1a] text-[#ff1a1a] shadow-[0_0_15px_rgba(255,0,0,0.3)]' : 'bg-black/50 border-red-900/40 text-red-500 hover:border-red-600'
-               }`}
-             >
-               War Room Mode
-             </button>
-             <button 
-               onClick={() => exportConversationToMarkdown({ session: sessions.find(s => s.id === sessionId)!, includeMetadata: true, includeTimestamps: true })}
-               className="px-4 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[11px] uppercase"
-             >
-               Export Arch
-             </button>
+          {/* Cost display */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-red-900/20 bg-black/40 p-2 clip-bottom-right">
+              <span className="text-[8px] text-red-600/70 uppercase block mb-1 font-bold">Today's Cost</span>
+              <div className="text-sm font-mono text-green-400">${todayCost.toFixed(4)}</div>
+            </div>
+            <div className="border border-red-900/20 bg-black/40 p-2 clip-bottom-right">
+              <span className="text-[8px] text-red-600/70 uppercase block mb-1 font-bold">Total Cost</span>
+              <div className="text-sm font-mono text-orange-400">${totalCost.toFixed(4)}</div>
+            </div>
           </div>
+
+          {/* Action buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setIsWarRoomMode(!isWarRoomMode)}
+              className={`flex-1 py-2 text-[10px] uppercase font-black tracking-widest clip-angled transition-all border ${isWarRoomMode ? 'bg-[#ff1a1a]/20 border-[#ff1a1a] text-[#ff1a1a] shadow-[0_0_15px_rgba(255,0,0,0.3)]' : 'bg-black/50 border-red-900/40 text-red-500 hover:border-red-600'
+                }`}
+            >
+              War Room
+            </button>
+            {isWarRoomMode && (
+              <button
+                onClick={() => setShowWarRoomVisual(!showWarRoomVisual)}
+                className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase"
+              >
+                Visual
+              </button>
+            )}
+            {/* Task Manager button */}
+            <button
+              onClick={() => setIsTaskPanelOpen(!isTaskPanelOpen)}
+              className="relative px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Activity size={12} />
+              Tasks
+              {taskManager.activeTasks.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-orange-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold">
+                  {taskManager.activeTasks.length}
+                </span>
+              )}
+            </button>
+            {/* Skills button */}
+            <button
+              onClick={() => setIsSkillBrowserOpen(!isSkillBrowserOpen)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <ScrollText size={12} />
+              Skills
+            </button>
+            {/* Worker Logs */}
+            <button
+              onClick={() => setIsWorkerLogOpen(!isWorkerLogOpen)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Terminal size={12} />
+              Logs
+            </button>
+            {/* Message Timeline */}
+            <button
+              onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <MessageSquare size={12} />
+              Timeline
+            </button>
+            {/* Audit Log */}
+            <button
+              onClick={() => setIsAuditLogOpen(!isAuditLogOpen)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <ShieldAlert size={12} />
+              Audit
+            </button>
+            <button
+              onClick={() => setIsActivityFeedOpen(true)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Activity size={12} />
+              Feed
+            </button>
+            <button
+              onClick={() => setIsMemoryBrowserOpen(true)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Database size={12} />
+              Memory
+            </button>
+            <button
+              onClick={() => setIsAgentCreatorOpen(true)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Plus size={12} />
+              Agent
+            </button>
+            {/* Session Replay */}
+            <button
+              onClick={() => { sessionReplayRecorder.stopRecording(); setIsSessionReplayOpen(true); }}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Zap size={12} />
+              Replay
+            </button>
+            {/* Agent Leaderboard */}
+            <button
+              onClick={() => setIsLeaderboardOpen(true)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Trophy size={12} />
+              Rank
+            </button>
+            {/* Cron Scheduler */}
+            <button
+              onClick={() => setIsCronManagerOpen(!isCronManagerOpen)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1"
+            >
+              <Clock size={12} />
+              Cron
+            </button>
+            {/* Theme Toggle */}
+            {isThemeToggleVisible && <ThemeToggle />}
+          </div>
+
+          {/* NEW: Plan Mode badge */}
+          <div className="flex gap-2 items-center">
+            <PlanModeBadge
+              planState={planModeState}
+              onClick={() => setIsPlanModeUIOpen(true)}
+              onToggle={handleEnterPlanMode}
+            />
+            <SessionSelector
+              sessions={sessionManager.sessions}
+              activeSessionId={activeSessionId}
+              loading={sessionManager.loading}
+              onSelectSession={handleSelectSession}
+              onCreateSession={handleCreateSession}
+              onDeleteSession={handleDeleteSession}
+            />
+          </div>
+
+          <button
+            onClick={() => exportConversationToMarkdown({ session: sessions.find(s => s.id === sessionId)!, includeMetadata: true, includeTimestamps: true })}
+            className="w-full py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase"
+          >
+            Export Arch
+          </button>
         </div>
       </div>
 
@@ -1292,6 +1854,52 @@ export default function SuperDashboard() {
         )}
       </AnimatePresence>
 
+      {/* Activity Feed Modal */}
+      <AnimatePresence>
+        {isActivityFeedOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+            onClick={() => setIsActivityFeedOpen(false)}
+          >
+            <div
+              className="absolute right-0 top-0 h-full w-[350px] bg-[#050000] border-l border-red-900/50"
+              onClick={e => e.stopPropagation()}
+            >
+              <ActivityFeed
+                entries={activityEntries}
+                onClear={() => setActivityEntries([])}
+                isOpen={true}
+                onClose={() => setIsActivityFeedOpen(false)}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Memory Browser Modal */}
+      <AnimatePresence>
+        {isMemoryBrowserOpen && (
+          <MemoryBrowser
+            agentMemories={agentMemories}
+            onClear={(agent) => {
+              setAgentMemories(prev => ({ ...prev, [agent]: [] }));
+            }}
+            onClearAll={() => {
+              const cleared = Object.keys(agentMemories).reduce((acc, agent) => {
+                acc[agent] = [];
+                return acc;
+              }, {} as Record<string, any[]>);
+              setAgentMemories(cleared);
+            }}
+            isOpen={isMemoryBrowserOpen}
+            onClose={() => setIsMemoryBrowserOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Migration Status Banner */}
       <AnimatePresence>
         {migrationStatus && migrationStatus.migrated > 0 && (
@@ -1308,7 +1916,119 @@ export default function SuperDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        shortcuts={shortcuts}
+      />
+
+      {/* Agent Creator */}
+      <AgentCreator
+        isOpen={isAgentCreatorOpen}
+        onClose={() => setIsAgentCreatorOpen(false)}
+        onSave={(agent) => {
+          setCustomAgents(prev => [...prev, agent]);
+          addActivity({
+            type: 'success',
+            agent: 'System',
+            message: `Created custom agent: ${agent.name}`,
+            metadata: { tools: agent.tools, model: agent.model }
+          });
+        }}
+        existingAgents={[...ALL_PROFILES.map(p => p.name), ...customAgents.map(a => a.name)]}
+      />
+
+      {/* Trace Viewer */}
+      <TraceViewer
+        spans={traceSpans}
+        isOpen={isTraceViewerOpen}
+        onClose={() => setIsTraceViewerOpen(false)}
+      />
+
+      {/* Task Panel - Real-time worker management */}
+      <TaskPanel
+        isOpen={isTaskPanelOpen}
+        onClose={() => setIsTaskPanelOpen(false)}
+        tasks={taskManager.tasks}
+        activeTasks={taskManager.activeTasks}
+        loading={taskManager.loading}
+        onStopTask={taskManager.stopTask}
+        onMessageWorker={taskManager.messageWorker}
+        onGetTaskOutput={taskManager.getTaskOutput}
+      />
+
+      {/* Skill Browser */}
+      <SkillBrowser
+        onExecute={handleExecuteSkill}
+        isOpen={isSkillBrowserOpen}
+        onClose={() => setIsSkillBrowserOpen(false)}
+      />
+
+      {/* Plan Mode UI */}
+      <PlanModeUI
+        planState={planModeState}
+        onUpdatePlan={handleUpdatePlan}
+        onApprove={handleApprovePlan}
+        onCancel={handleCancelPlan}
+        isOpen={isPlanModeUIOpen}
+        onClose={() => setIsPlanModeUIOpen(false)}
+      />
+
+      {/* Worker Log Panel */}
+      <WorkerLogPanel
+        isOpen={isWorkerLogOpen}
+        onClose={() => setIsWorkerLogOpen(false)}
+      />
+
+      {/* Message Thread Timeline */}
+      <MessageThreadTimeline
+        messages={(agentMemories[viewingAgent] || [])}
+        agentName={viewingAgent}
+        isOpen={isTimelineOpen}
+        onClose={() => setIsTimelineOpen(false)}
+      />
+
+      {/* Audit Log Dashboard */}
+      <AuditLogDashboard
+        isOpen={isAuditLogOpen}
+        onClose={() => setIsAuditLogOpen(false)}
+      />
+
+      {/* Session Replay Viewer */}
+      <SessionReplayViewer
+        isOpen={isSessionReplayOpen}
+        onClose={() => setIsSessionReplayOpen(false)}
+      />
+
+      {/* Agent Leaderboard */}
+      <AgentLeaderboard
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+      />
+
+      {/* Cron Manager */}
+      <CronManager
+        isOpen={isCronManagerOpen}
+        onClose={() => setIsCronManagerOpen(false)}
+      />
+
+      {/* War Room Visualization Toggle */}
+      {
+        isWarRoomMode && showWarRoomVisual && (
+          <div className="fixed inset-0 z-40 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowWarRoomVisual(false)}>
+            <div className="w-full max-w-4xl h-[600px] bg-[#050000] border border-red-900/50 rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+              <WarRoomVisualization
+                activeAgents={Object.keys(enabledAgents).filter(k => enabledAgents[k])}
+                isRunning={isLoading}
+                currentSpeaker={activeRoutingAgent}
+              />
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 }
 

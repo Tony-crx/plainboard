@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CortisolBoard
 
-## Getting Started
+> Multi-agent AI swarm orchestration platform -- Command-center UI for autonomous agent teams
 
-First, run the development server:
+Built with Next.js 16, React 19, TypeScript, Three.js, and Framer Motion.
+
+## Quick Start
 
 ```bash
+npm install
+cp .env.example .env.local   # Configure your API keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Documentation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Document | Description |
+|----------|-------------|
+| [Setup Guide](./docs/setup.md) | Installation, configuration, deployment |
+| [Architecture](./docs/architecture.md) | System design, components, data flow |
+| [Roadmap](./docs/roadmap.md) | 50-phase development plan |
+| [Implementation History](./docs/implementation-summary.md) | What's been built and when |
 
-## Learn More
+## Core Features
 
-To learn more about Next.js, take a look at the following resources:
+- **Swarm Intelligence** -- 6 specialized AI agents (Coordinator, Triage, Coder, Math, Cyn, Adso)
+- **Multi-LLM Support** -- OpenRouter + Groq with automatic key rotation & failover
+- **3D Neural Topology** -- Interactive Three.js agent network visualization
+- **War Room Mode** -- Real-time multi-agent collaboration visualization
+- **Activity Feed** -- Live operation logging with filtering & export
+- **Memory Browser** -- Full-text search across agent memories
+- **Cost Tracking** -- Per-model token cost estimation
+- **Input Validation** -- XSS, SQL injection, command injection prevention
+- **Distributed Tracing** -- Visual span timeline for debugging
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Frontend:** Next.js 16 App Router, React 19, TypeScript
+- **Styling:** Tailwind CSS 4, Framer Motion
+- **3D:** Three.js, React Three Fiber, Drei
+- **LLM:** OpenRouter API, Groq API
+- **Auth:** JWT session management
+- **Testing:** Vitest, Testing Library
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+climax/
+├── src/
+│   ├── app/              # Next.js pages & API routes
+│   ├── components/       # React UI components (30+)
+│   ├── lib/              # Core business logic
+│   │   ├── agents/       # Agent definitions
+│   │   ├── swarm/        # Swarm orchestration
+│   │   ├── llm/          # LLM API integration
+│   │   ├── memory/       # Memory system
+│   │   ├── tools/        # Agent tools (14+ modules)
+│   │   ├── permissions/  # Permission system
+│   │   ├── tasks/        # Task lifecycle management
+│   │   ├── security/     # Validation & auditing
+│   │   └── observability/# Tracing, metrics, cost tracking
+│   └── test/             # Test configuration
+├── docs/                 # Documentation
+├── data/                 # Persistent data (JSON)
+└── public/               # Static assets
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run test` | Run tests (watch mode) |
+| `npm run test:run` | Run tests once |
+
+## License
+
+Private -- All rights reserved

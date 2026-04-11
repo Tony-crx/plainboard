@@ -2,8 +2,8 @@ export interface AgentMessage {
   id: string;
   from: string;
   to: string;
-  type: 'handoff' | 'query' | 'response' | 'broadcast';
-  content: any;
+  type: 'handoff' | 'query' | 'response' | 'broadcast' | 'tool_call' | 'tool_result' | 'worker_event' | 'notification';
+  content: Record<string, unknown> | string;
   timestamp: number;
   priority: 'low' | 'normal' | 'high';
 }

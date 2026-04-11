@@ -75,8 +75,10 @@ climax/
 ├── data/                 # Persistent data (memories, audit logs)
 ├── public/               # Static assets
 ├── .env.example          # Environment template
-├── ARCHITECTURE.md       # System architecture docs
-└── SETUP.md             # This file
+├── docs/                 # Documentation
+│   ├── architecture.md   # System architecture
+│   └── setup.md          # This file
+└── README.md             # Root entry point
 ```
 
 ## Configuration Details

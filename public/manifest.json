@@ -1,0 +1,37 @@
+{
+  "name": "CortisolBoard - AI Swarm Command Center",
+  "short_name": "Cortisol",
+  "description": "Multi-agent AI swarm orchestration platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#8b0000",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "developer tools"],
+  "shortcuts": [
+    {
+      "name": "New Session",
+      "url": "/?action=new-session",
+      "description": "Start a new swarm session"
+    },
+    {
+      "name": "Tasks",
+      "url": "/?action=tasks",
+      "description": "View active tasks"
+    }
+  ]
+}

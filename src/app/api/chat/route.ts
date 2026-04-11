@@ -5,8 +5,10 @@ import { Message } from '@/lib/swarm/types';
 import { InputValidator } from '@/lib/security/input-validator';
 import { globalAuditLogger } from '@/lib/security/audit-logger';
 import { withApiErrorHandling } from '@/lib/errors/api-error-handler';
+import { sessionManager } from '@/lib/storage/session-manager';
+import { globalTaskStore } from '@/lib/tasks/task-store';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 // Non-streaming handler
 async function chatHandler(req: Request) {
@@ -17,6 +19,8 @@ async function chatHandler(req: Request) {
   const enabledAgents = body.enabledAgents as Record<string, boolean>;
   const agentOverrides = body.agentOverrides as Record<string, { name?: string, instructions?: string, model?: string }>;
   const apiKeys = body.apiKeys as string[];
+  const sessionId = body.sessionId as string | undefined;
+  const contextVariables = body.contextVariables as Record<string, any> | undefined;
 
   // Security Phase 2: Input Validation
   const userMessages = agentMemories[activeAgentName]?.filter(m => m.role === 'user') || [];
@@ -53,10 +57,18 @@ async function chatHandler(req: Request) {
     return NextResponse.json({ error: "Invalid agentMemories body structure" }, { status: 400 });
   }
 
-  const response = await runSwarm(startingAgent, agentMemories, {}, 10, selectedModel, enabledAgents, agentOverrides, apiKeys);
+  const response = await runSwarm(
+    startingAgent,
+    agentMemories,
+    contextVariables || {},
+    10,
+    selectedModel,
+    enabledAgents,
+    agentOverrides,
+    apiKeys
+  );
 
   // Map the new agent name back to the internal key for state consistency on the client
-  // Since targetAgent.name might be customized, resolve the base key
   let terminalAgentUIKey = response.targetAgent.name;
   for (const baseKey in allAgents) {
     if (baseKey === terminalAgentUIKey || agentOverrides[baseKey]?.name === terminalAgentUIKey) {
@@ -75,9 +87,23 @@ async function chatHandler(req: Request) {
     pureMemories[pureKey] = response.agentMemories[key];
   }
 
+  // Session persistence: save updated memories
+  if (sessionId) {
+    sessionManager.updateSession(sessionId, {
+      agentMemories: pureMemories,
+      activeAgentName: terminalAgentUIKey,
+      updatedAt: Date.now(),
+    });
+  }
+
+  // Collect task notifications from completed workers
+  const taskNotifications = response.taskNotifications || [];
+
   return NextResponse.json({
     agentMemories: pureMemories,
-    newAgentName: terminalAgentUIKey
+    newAgentName: terminalAgentUIKey,
+    taskNotifications,
+    sessionId: sessionId || null,
   });
 }
 
