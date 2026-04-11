@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Flame, ShieldAlert } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get('next') || '/swarm';
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,8 +24,8 @@ export default function LoginPage() {
       });
 
       if (!res.ok) throw new Error('AUTHORIZATION DENIED');
-      
-      window.location.href = '/';
+
+      window.location.href = nextPath;
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -32,7 +35,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center font-mono">
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(255,0,0,0.1)_0%,rgba(0,0,0,1)_70%)] pointer-events-none"></div>
-      
+
       <div className="z-10 w-full max-w-md p-8 border border-red-900/50 bg-[#050000] shadow-[0_0_30px_rgba(255,0,0,0.1)]">
         <div className="flex flex-col items-center mb-8">
           <Flame size={48} className="text-red-600 mb-4 drop-shadow-[0_0_15px_rgba(255,0,0,0.8)]" />
@@ -67,5 +70,15 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center font-mono text-red-500">Loading...</div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

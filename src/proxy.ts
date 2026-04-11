@@ -2,27 +2,31 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySession } from '@/lib/auth/session-manager';
 
-const protectedRoutes = ['/', '/api/chat', '/api/metrics'];
-const publicRoutes = ['/login'];
+const protectedRoutes = ['/swarm', '/board', '/api/chat', '/api/metrics'];
+const publicRoutes = ['/login', '/'];
 
 export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const isProtectedRoute = protectedRoutes.includes(path);
   const isPublicRoute = publicRoutes.includes(path);
 
-  // Vercel Edge optimization: don't compute JWT logic if not strictly needing authorization
   if (!isProtectedRoute && !isPublicRoute) {
-     return NextResponse.next();
+    return NextResponse.next();
   }
 
   const session = await verifySession();
 
+  // Unauthenticated → protected route → redirect to login with ?next=
   if (isProtectedRoute && !session) {
-    return NextResponse.redirect(new URL('/login', req.nextUrl));
+    const loginUrl = new URL('/login', req.nextUrl);
+    loginUrl.searchParams.set('next', path);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (isPublicRoute && session && !path.startsWith('/')) {
-    return NextResponse.redirect(new URL('/', req.nextUrl));
+  // Authenticated on login → redirect to ?next= or /swarm
+  if (path === '/login' && session) {
+    const next = req.nextUrl.searchParams.get('next') || '/swarm';
+    return NextResponse.redirect(new URL(next, req.nextUrl));
   }
 
   return NextResponse.next();
