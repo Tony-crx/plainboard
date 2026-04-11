@@ -5,6 +5,7 @@
 - **Node.js** 18+ (20+ recommended)
 - **npm** or compatible package manager
 - **OpenRouter API Key(s)** - Get from [openrouter.ai](https://openrouter.ai/keys)
+- **Groq API Key(s)** (optional) - Get from [console.groq.com](https://console.groq.com/keys)
 
 ## Quick Start
 
@@ -31,6 +32,9 @@ SESSION_SECRET=your-super-secret-session-key-here
 
 # OpenRouter API Keys (comma-separated for key rotation)
 OPENROUTER_KEYS=sk-or-your-key-1,sk-or-your-key-2
+
+# Groq API Keys (comma-separated for key rotation)
+GROQ_KEYS=gsk-your-key-1,gsk-your-key-2
 
 # Application URL
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -78,18 +82,30 @@ climax/
 ## Configuration Details
 
 ### Session Secret
+
 Generate a secure random key:
+
 ```bash
 openssl rand -base64 32
 ```
 
 ### OpenRouter API Keys
+
 1. Visit [openrouter.ai](https://openrouter.ai/)
 2. Create an account and generate API keys
 3. Add multiple keys (comma-separated) for automatic rotation
 
+### Groq API Keys
+
+1. Visit [console.groq.com](https://console.groq.com/)
+2. Create an account and generate API keys
+3. Add multiple keys (comma-separated) for automatic rotation
+4. Groq provides free access to models like Llama 3.3 70B, Mixtral 8x7B, and Gemma 2 9B
+
 ### Login Password
+
 The default password is `demo`. Change this in production:
+
 ```env
 LOGIN_PASSWORD=your-secure-password
 ```
@@ -119,6 +135,7 @@ npx vitest src/lib/security/__tests__/input-validator.test.ts
 ### Docker
 
 Create a `Dockerfile`:
+
 ```dockerfile
 FROM node:20-alpine AS base
 WORKDIR /app
@@ -133,6 +150,7 @@ CMD ["npm", "start"]
 ```
 
 Build and run:
+
 ```bash
 docker build -t cortisolboard .
 docker run -p 3000:3000 --env-file .env.local cortisolboard
@@ -141,19 +159,24 @@ docker run -p 3000:3000 --env-file .env.local cortisolboard
 ## Troubleshooting
 
 ### "No API keys found" Error
+
 - Ensure `OPENROUTER_KEYS` is set in `.env.local`
 - Check keys are valid and comma-separated
 
 ### Session Issues
+
 - Verify `SESSION_SECRET` is set
 - Clear browser cookies and re-login
 
 ### Rate Limiting (429 Errors)
+
 - Add more OpenRouter API keys for rotation
+- Add Groq API keys as an alternative provider
 - Keys automatically rotate when rate-limited
 - Wait 60 seconds for cooldown to expire
 
 ### Build Failures
+
 ```bash
 # Clean and reinstall
 rm -rf node_modules .next
@@ -171,6 +194,7 @@ npm run build
 ## CI/CD
 
 The project includes GitHub Actions for:
+
 - Linting
 - Testing (Node 18 & 20)
 - Build verification

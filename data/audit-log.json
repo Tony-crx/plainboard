@@ -1,0 +1,41 @@
+[
+  {
+    "agentName": "API_ERROR_HANDLER",
+    "action": "SERVER_ERROR",
+    "details": {
+      "message": "[STRICT MODE VETO] Attempted to use non-free model: openrouter/free. Only models ending with ':free' are allowed to avoid debt when using system keys.",
+      "code": "Error",
+      "route": "/api/chat",
+      "stack": "Error: [STRICT MODE VETO] Attempted to use non-free model: openrouter/free. Only models ending with ':free' are allowed to avoid debt when using system keys.\n    at generateChatCompletion (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:300:15)\n    at runSwarm (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:740:201)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async chatHandler (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:6725:22)\n    at async /home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:6640:20\n    at async AppRouteRouteModule.do (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:40115)\n    at async AppRouteRouteModule.handle (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:47321)\n    at async responseGenerator (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17695:38)\n    at async AppRouteRouteModule.handleResponse (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:227216)\n    at async handleResponse (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17758:32)\n    at async Module.handler (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17812:13)\n    at async DevServer.renderToResponseWithComponentsImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1454:9)\n    at async DevServer.renderPageComponent (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1506:24)\n    at async DevServer.renderToResponseImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1556:32)\n    at async DevServer.pipeImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1043:25)\n    at async NextNodeServer.handleCatchallRenderRequest (/home/tony/crymos/climax/node_modules/next/dist/server/next-server.js:338:17)\n    at async DevServer.handleRequestImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:934:17)\n    at async /home/tony/crymos/climax/node_modules/next/dist/server/dev/next-dev-server.js:394:20\n    at async Span.traceAsyncFn (/home/tony/crymos/climax/node_modules/next/dist/trace/trace.js:164:20)\n    at async DevServer.handleRequest (/home/tony/crymos/climax/node_modules/next/dist/server/dev/next-dev-server.js:390:24)\n    at async invokeRender (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:266:21)\n    at async handleRequest (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:465:24)\n    at async requestHandlerImpl (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:514:13)\n    at async Server.requestListener (/home/tony/crymos/climax/node_modules/next/dist/server/lib/start-server.js:225:13)"
+    },
+    "riskLevel": "high",
+    "id": "da95a806-a213-4bdf-8c9f-20d6f214d372",
+    "timestamp": 1775748646467
+  },
+  {
+    "agentName": "API_ERROR_HANDLER",
+    "action": "SERVER_ERROR",
+    "details": {
+      "message": "[STRICT MODE VETO] Attempted to use non-free model: openrouter/free. Only models ending with ':free' are allowed to avoid debt when using system keys.",
+      "code": "Error",
+      "route": "/api/chat",
+      "stack": "Error: [STRICT MODE VETO] Attempted to use non-free model: openrouter/free. Only models ending with ':free' are allowed to avoid debt when using system keys.\n    at generateChatCompletion (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:300:15)\n    at runSwarm (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:740:201)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async chatHandler (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:6725:22)\n    at async /home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:6640:20\n    at async AppRouteRouteModule.do (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:40115)\n    at async AppRouteRouteModule.handle (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:5:47321)\n    at async responseGenerator (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17695:38)\n    at async AppRouteRouteModule.handleResponse (/home/tony/crymos/climax/node_modules/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js:1:227216)\n    at async handleResponse (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17758:32)\n    at async Module.handler (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17812:13)\n    at async DevServer.renderToResponseWithComponentsImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1454:9)\n    at async DevServer.renderPageComponent (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1506:24)\n    at async DevServer.renderToResponseImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1556:32)\n    at async DevServer.pipeImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:1043:25)\n    at async NextNodeServer.handleCatchallRenderRequest (/home/tony/crymos/climax/node_modules/next/dist/server/next-server.js:338:17)\n    at async DevServer.handleRequestImpl (/home/tony/crymos/climax/node_modules/next/dist/server/base-server.js:934:17)\n    at async /home/tony/crymos/climax/node_modules/next/dist/server/dev/next-dev-server.js:394:20\n    at async Span.traceAsyncFn (/home/tony/crymos/climax/node_modules/next/dist/trace/trace.js:164:20)\n    at async DevServer.handleRequest (/home/tony/crymos/climax/node_modules/next/dist/server/dev/next-dev-server.js:390:24)\n    at async invokeRender (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:266:21)\n    at async handleRequest (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:465:24)\n    at async requestHandlerImpl (/home/tony/crymos/climax/node_modules/next/dist/server/lib/router-server.js:514:13)\n    at async Server.requestListener (/home/tony/crymos/climax/node_modules/next/dist/server/lib/start-server.js:225:13)"
+    },
+    "riskLevel": "high",
+    "id": "039a1db5-de14-4648-a6ec-db98c3443dbc",
+    "timestamp": 1775748689606
+  },
+  {
+    "agentName": "API_ERROR_HANDLER",
+    "action": "SERVER_ERROR",
+    "details": {
+      "message": "Rate limit exceeded 429",
+      "code": "Error",
+      "route": "/api/chat",
+      "stack": "Error: Rate limit exceeded 429\n    at maxRetries (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:331:27)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async retryWithBackoff (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:119:20)\n    at async CircuitBreaker.execute (/home/tony/crymos/climax/.next/dev/server/chunks/[root-of-the-server]__013yyg2._.js:154:28)\n    at async run (/home/tony/crymos/climax/.next/dev/server/chunks/node_modules_13jua3j._.js:17085:36)"
+    },
+    "riskLevel": "high",
+    "id": "e4c8097b-7d62-460a-a2e3-2e4a4020f96a",
+    "timestamp": 1775748792299
+  }
+]

@@ -7,9 +7,9 @@ import { globalDeadLetterQueue } from '../errors/dead-letter-queue';
 import { globalCostTracker } from '../observability/cost-tracker';
 
 let keyManagerInstance: KeyManager | null = null;
-function getKeyManager() {
+function getGroqKeyManager() {
   if (!keyManagerInstance) {
-    keyManagerInstance = new KeyManager(process.env.OPENROUTER_KEYS || "");
+    keyManagerInstance = new KeyManager(process.env.GROQ_KEYS || "");
   }
   return keyManagerInstance;
 }
@@ -17,15 +17,20 @@ function getKeyManager() {
 const circuitBreaker = new CircuitBreaker();
 
 // Streaming interface
-export async function* generateChatCompletionStream(
+export async function* generateGroqChatCompletionStream(
   messages: Message[],
-  model: string = "meta-llama/llama-3.3-70b-instruct:free",
+  model: string = "llama-3.3-70b-versatile",
   tools?: Tool[],
   apiKeys?: string[],
   abortSignal?: AbortSignal
 ): AsyncGenerator<string, Message> {
-  const keys = getKeyManager();
+  const keys = getGroqKeyManager();
   const apiKey = (apiKeys && apiKeys.length > 0) ? apiKeys[Math.floor(Math.random() * apiKeys.length)] : keys.getNextKey();
+
+  const groqTools = tools && tools.length > 0 ? tools.map(t => ({
+    type: t.type,
+    function: t.function
+  })) : undefined;
 
   const payload: any = {
     model,
@@ -34,21 +39,16 @@ export async function* generateChatCompletionStream(
     stream: true
   };
 
-  if (tools && tools.length > 0) {
-    payload.tools = tools.map(t => ({
-      type: t.type,
-      function: t.function
-    }));
+  if (groqTools) {
+    payload.tools = groqTools;
     payload.tool_choice = "auto";
   }
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-      "X-Title": "FreeSwarmWebApp"
+      "Content-Type": "application/json"
     },
     body: JSON.stringify(payload),
     signal: abortSignal
@@ -56,7 +56,7 @@ export async function* generateChatCompletionStream(
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`OpenRouter Error ${res.status}: ${errText}`);
+    throw new Error(`Groq Error ${res.status}: ${errText}`);
   }
 
   const reader = res.body?.getReader();
@@ -103,23 +103,24 @@ export async function* generateChatCompletionStream(
   return { role: 'assistant', content: fullContent } as Message;
 }
 
-export async function generateChatCompletion(
+export async function generateGroqChatCompletion(
   messages: Message[],
-  model: string = "meta-llama/llama-3.3-70b-instruct:free",
+  model: string = "llama-3.3-70b-versatile",
   tools?: Tool[],
   apiKeys?: string[]
 ): Promise<Message> {
-
-  if (!model.endsWith(":free") && (!apiKeys || apiKeys.length === 0)) {
-    throw new Error(`[STRICT MODE VETO] Attempted to use non-free model: ${model}. Only models ending with ':free' are allowed to avoid debt when using system keys.`);
-  }
 
   const runCompletion = async (): Promise<Message> => {
     return circuitBreaker.execute(async () => {
       return retryWithBackoff(
         async () => {
-          const keys = getKeyManager();
+          const keys = getGroqKeyManager();
           const apiKey = (apiKeys && apiKeys.length > 0) ? apiKeys[Math.floor(Math.random() * apiKeys.length)] : keys.getNextKey();
+
+          const groqTools = tools && tools.length > 0 ? tools.map(t => ({
+            type: t.type,
+            function: t.function
+          })) : undefined;
 
           const payload: any = {
             model,
@@ -127,38 +128,33 @@ export async function generateChatCompletion(
             temperature: 0.2
           };
 
-          if (tools && tools.length > 0) {
-            payload.tools = tools.map(t => ({
-              type: t.type,
-              function: t.function
-            }));
+          if (groqTools) {
+            payload.tools = groqTools;
             payload.tool_choice = "auto";
           }
 
-          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-              "X-Title": "FreeSwarmWebApp"
+              "Content-Type": "application/json"
             },
             body: JSON.stringify(payload)
           });
 
           if (res.status === 429) {
             keys.reportRateLimit(apiKey);
-            throw new Error("Rate limit exceeded 429"); // Trigger retry mechanism
+            throw new Error("Rate limit exceeded 429");
           }
 
           if (!res.ok) {
             const errText = await res.text();
-            throw new Error(`OpenRouter Error ${res.status}: ${errText}`);
+            throw new Error(`Groq Error ${res.status}: ${errText}`);
           }
 
           const data = await res.json();
           if (data.usage) {
-            globalCostTracker.recordUsage(model, data.usage.prompt_tokens || 0, data.usage.completion_tokens || 0, 'LLM_ENGINE');
+            globalCostTracker.recordUsage(model, data.usage.prompt_tokens || 0, data.usage.completion_tokens || 0, 'GROQ');
           }
           return data.choices[0].message as Message;
         },
@@ -168,17 +164,14 @@ export async function generateChatCompletion(
           shouldRetry: (err) => {
             if (err.message.includes('429')) return true;
             if (err.message.includes('Circuit breaker is open')) return false;
-            if (err.message.includes('STRICT MODE VETO')) return false;
             if (err.message.includes('No API keys')) return false;
-            if (err.message.includes('401')) return false; // Unauthorized implies invalid key, don't bang OpenRouter.
-            return true; // network errors
+            if (err.message.includes('401')) return false;
+            return true;
           }
         }
       ).catch(err => {
-        // If all retries fail inside the circuit, bubble it up. The circuit breaker will catch this and increment its failure counter.
-        // It's crucial because Dead letter queues should only trigger if the final outer scope fails.
         globalDeadLetterQueue.add({
-          agentName: 'LLM_ENGINE',
+          agentName: 'GROQ',
           payload: { model, messages },
           error: err.message,
           attempts: 4,

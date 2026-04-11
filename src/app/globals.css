@@ -1,69 +1,357 @@
 @import "tailwindcss";
 
-@theme {
-  --color-neon-red: #ff0000;
+/* ─── Design Tokens ─────────────────────────────────────────────── */
+:root {
+  --color-neon-red: #ff1a1a;
   --color-deep-red: #8b0000;
-  --color-glass-dark: rgba(0, 0, 0, 0.95);
-  --color-glass-border: rgba(255, 0, 0, 0.2);
+  --color-mid-red: #cc0000;
+  --color-blood-red: #590000;
+  --font-display: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-code: var(--font-mono), 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-@layer base {
-  @font-face {
-    font-family: 'Inter';
-    src: url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-  }
-}
-
-body {
-  font-family: 'Inter', sans-serif;
+/* ─── Base ───────────────────────────────────────────────────────── */
+html, body {
+  font-family: var(--font-display);
   background-color: #000000;
-  color: #dddddd;
+  color: #c4c4c4;
   margin: 0;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar for Chat */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #000000;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(139, 0, 0, 0.5);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 0, 0, 0.8);
+code, pre, .font-mono, [class*="font-mono"] {
+  font-family: var(--font-code);
 }
 
-/* Aurora Backdrop Animation (Red theme) */
+/* ─── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; border-left: 1px solid rgba(139, 0, 0, 0.2); }
+::-webkit-scrollbar-thumb { background: rgba(200, 0, 0, 0.6); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 0, 0, 0.9); box-shadow: 0 0 10px rgba(255, 0, 0, 0.8); }
+
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── Aurora / Palantir Flow ──────────────────────────────────────── */
 .aurora-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 10% 15%, rgba(200, 0, 0, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 25% at 90% 85%, rgba(120, 0, 0, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse 30% 30% at 50% 50%, rgba(255, 0, 0, 0.05) 0%, transparent 60%);
+  filter: blur(60px);
+  animation: aurora-drift 15s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift {
+  0%   { transform: scale(1) translate(0, 0); opacity: 0.8; }
+  50%  { transform: scale(1.05) translate(-15px, 20px); opacity: 1; }
+  100% { transform: scale(1.1) translate(-25px, 35px); opacity: 0.8; }
+}
+
+/* ─── Scanlines & Tactical CRT ───────────────────────────────────── */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  animation: crt-flicker 0.1s infinite;
+}
+@keyframes crt-flicker {
+  0% { opacity: 0.98; }
+  50% { opacity: 0.95; }
+  100% { opacity: 1; }
+}
+
+/* ─── Chat area dot grid ─────────────────────────────────────────── */
+.chat-grid-bg {
+  background-image: 
+    linear-gradient(rgba(139, 0, 0, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-position: center center;
+}
+
+/* ─── Cyber Clip Paths / Angles ──────────────────────────────────── */
+.clip-edges {
+  clip-path: polygon(
+    10px 0, calc(100% - 10px) 0, 
+    100% 10px, 100% calc(100% - 10px), 
+    calc(100% - 10px) 100%, 10px 100%, 
+    0 calc(100% - 10px), 0 10px
+  );
+}
+.clip-angled {
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 0 100%);
+}
+.clip-bottom-right {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+}
+
+/* ─── Sidebar brand header ───────────────────────────────────────── */
+.sidebar-brand {
+  background: linear-gradient(180deg, rgba(20,0,0,0.8) 0%, #000000 100%);
+  border-bottom: 2px solid rgba(200, 0, 0, 0.4);
+  box-shadow: 0 5px 15px rgba(255,0,0,0.1);
+}
+
+/* ─── Agent Node Cards ───────────────────────────────────────────── */
+.agent-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-left: 2px solid transparent;
+  background: transparent;
+  margin: 2px 8px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+}
+.agent-row::before {
+  content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: 
-    radial-gradient(circle at 15% 20%, rgba(139, 0, 0, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 85% 80%, rgba(255, 0, 0, 0.05) 0%, transparent 50%);
-  filter: blur(80px);
-  z-index: 0;
-  pointer-events: none;
-  animation: aurora-shift 15s ease-in-out infinite alternate;
+  background: linear-gradient(90deg, rgba(200,0,0,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: -1;
+}
+.agent-row:hover::before { opacity: 1; }
+.agent-row:hover {
+  border-left-color: rgba(255, 30, 30, 0.8);
+  padding-left: 16px;
+}
+.agent-row.active {
+  background: rgba(100, 0, 0, 0.2);
+  border-left-color: #ff1a1a;
+  box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.1);
+}
+.agent-row .agent-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(180, 0, 0, 0.5);
+  transform: rotate(45deg);
+  background: rgba(50, 0, 0, 0.3);
+  box-shadow: 0 0 10px rgba(200,0,0,0.2) inset;
+}
+.agent-row .agent-icon > svg {
+  transform: rotate(-45deg);
 }
 
-@keyframes aurora-shift {
-  0% { transform: scale(1) translate(0, 0); }
-  100% { transform: scale(1.1) translate(-20px, 30px); }
-}
-
-/* Glassmorphism Classes - Pure Black & Red */
+/* ─── Glass Panels ───────────────────────────────────────────────── */
 .glass-panel {
-  background: #000000;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(139, 0, 0, 0.3);
-  box-shadow: 0 0 20px 0 rgba(139, 0, 0, 0.1);
+  background: rgba(5, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(200, 0, 0, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(139, 0, 0, 0.2);
+}
+.glass-panel-strong {
+  background: rgba(10, 0, 0, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgba(255, 0, 0, 0.2), inset 0 0 30px rgba(255,0,0,0.05);
 }
 
+/* ─── Glow ───────────────────────────────────────────────────────── */
 .glow-text {
-  text-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+  text-shadow: 0 0 10px rgba(255,0,0,0.8), 0 0 20px rgba(255,0,0,0.4);
+}
+.glow-text-sm {
+  text-shadow: 0 0 5px rgba(255,0,0,0.6);
+}
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(200,0,0,0.5), 0 0 15px rgba(255,0,0,0.3);
+}
+
+/* ─── Input ──────────────────────────────────────────────────────── */
+.input-terminal {
+  outline: none;
+  transition: all 0.2s ease;
+  background: rgba(15, 0, 0, 0.6);
+  border: 1px solid rgba(200, 0, 0, 0.3);
+}
+.input-terminal:focus {
+  background: rgba(25, 0, 0, 0.8);
+  border-color: rgba(255, 50, 50, 0.8) !important;
+  box-shadow: 0 0 20px rgba(255,0,0,0.15), inset 0 0 10px rgba(255,0,0,0.05);
+}
+
+/* ─── Msg Bubbles ────────────────────────────────────────────────── */
+.msg-user {
+  background: linear-gradient(135deg, rgba(40,0,0,0.8) 0%, rgba(10,0,0,0.9) 100%);
+  border: 1px solid rgba(200,0,0,0.3);
+  border-right: 3px solid #ff1a1a;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5), inset -20px 0 30px rgba(255,0,0,0.03);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.msg-assistant {
+  background: rgba(10,5,5,0.8);
+  border: 1px solid rgba(139,0,0,0.4);
+  border-left: 2px solid rgba(200,0,0,0.6);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.msg-error {
+  background: rgba(80,0,0,0.15);
+  border: 1px solid rgba(255,0,0,0.6);
+  border-left: 4px solid #ff0000;
+  animation: pulse-error 2s infinite;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+@keyframes pulse-error {
+  0% { box-shadow: inset 0 0 0 rgba(255,0,0,0); }
+  50% { box-shadow: inset 0 0 20px rgba(255,0,0,0.2); }
+  100% { box-shadow: inset 0 0 0 rgba(255,0,0,0); }
+}
+
+/* ─── Streaming cursor ───────────────────────────────────────────── */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px #ff1a1a; }
+  50%       { opacity: 0.2; box-shadow: none; }
+}
+.streaming-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.2em;
+  background: #ff1a1a;
+  vertical-align: text-bottom;
+  margin-left: 4px;
+  animation: blink-cursor 0.75s step-end infinite;
+}
+
+/* ─── Corner bracket decoration (Palantir HUD target) ────────────── */
+.bracket-corners {
+  position: relative;
+}
+.bracket-corners::before,
+.bracket-corners::after,
+.bracket-corners-top::before,
+.bracket-corners-top::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-color: rgba(255, 50, 50, 0.8);
+  border-style: solid;
+  z-index: 10;
+}
+.bracket-corners::before { top: -2px; left: -2px; border-width: 2px 0 0 2px; }
+.bracket-corners::after { bottom: -2px; right: -2px; border-width: 0 2px 2px 0; }
+.bracket-corners-top::before { top: -2px; right: -2px; border-width: 2px 2px 0 0; }
+.bracket-corners-top::after { bottom: -2px; left: -2px; border-width: 0 0 2px 2px; }
+
+/* ─── Radar/HUD Elements ─────────────────────────────────────────── */
+.radar-ring {
+  border: 1px dashed rgba(255,0,0,0.3);
+  border-radius: 50%;
+  animation: spin-slow 10s linear infinite;
+}
+.radar-ring::after {
+  content: ''; position: absolute; inset: -4px; border: 1px solid rgba(200,0,0,0.1); border-radius: 50%;
+  animation: spin-slow 15s linear infinite reverse;
+}
+@keyframes spin-slow {
+  100% { transform: rotate(360deg); }
+}
+
+/* ─── Pulse dot ──────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 26, 26, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 26, 26, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 26, 26, 0); }
+}
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ff1a1a;
+  animation: pulse-dot 1.5s infinite;
+}
+
+/* ─── Tactical divider ───────────────────────────────────────────── */
+.tactical-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,0,0,0.8) 50%, transparent 100%);
+  box-shadow: 0 0 10px rgba(255,0,0,0.5);
+  position: relative;
+}
+.tactical-divider::after {
+  content: ''; position: absolute; left: 50%; top: -2px; width: 6px; height: 6px;
+  background: #fff; transform: translateX(-50%); box-shadow: 0 0 10px #ff1a1a;
+}
+
+/* ─── Section label ──────────────────────────────────────────────── */
+.section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 50, 50, 0.7);
+  font-family: var(--font-code);
+  text-shadow: 0 0 5px rgba(255,0,0,0.3);
+}
+
+/* ─── Login Background specific styling ──────────────────────────── */
+.login-bg-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: sepia(100%) hue-rotate(320deg) saturate(300%) brightness(0.6) contrast(1.5);
+}
+.hud-vignette {
+  box-shadow: inset 0 0 150px rgba(0,0,0,0.9), inset 0 0 500px rgba(50,0,0,0.5);
+}
+
+/* Radical Redesign Utilities */
+.chat-grid-bg {
+  background-image: 
+    linear-gradient(rgba(255, 26, 26, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 26, 26, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.blink-cursor-end::after {
+  content: " \2588";
+  color: #ff1a1a;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MATRIX HUD SPECIFICS
+   ───────────────────────────────────────────────────────────────── */
+.clip-angled {
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+.clip-bottom-right {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+}
+.custom-panel-glow {
+  box-shadow: inset 0 0 40px rgba(255,0,0,0.05), 0 0 15px rgba(255,0,0,0.1);
 }

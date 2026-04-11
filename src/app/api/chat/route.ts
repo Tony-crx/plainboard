@@ -8,6 +8,7 @@ import { withApiErrorHandling } from '@/lib/errors/api-error-handler';
 
 export const maxDuration = 60;
 
+// Non-streaming handler
 async function chatHandler(req: Request) {
   const body = await req.json();
   const agentMemories = body.agentMemories as Record<string, Message[]>;
