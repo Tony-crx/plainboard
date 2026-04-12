@@ -6,13 +6,21 @@ import { InputValidator } from '@/lib/security/input-validator';
 import { globalAuditLogger } from '@/lib/security/audit-logger';
 import { verifySession } from '@/lib/auth/session-manager';
 
+const ADMIN_TOKEN = process.env.ADMIN_PASSWORD;
+
 export async function POST(req: Request) {
-    // Basic API Key or JWT validation for integration 
+    // Basic API Key or JWT validation for integration
     const authHeader = req.headers.get('authorization');
     const sessionCookie = await verifySession();
 
-    if (!sessionCookie && authHeader !== `Bearer ${process.env.ADMIN_PASSWORD || 'demo'}`) {
-         return NextResponse.json({ error: 'External API access denied. Provide matching Bearer token.' }, { status: 401 });
+    const hasValidToken = sessionCookie !== null;
+    const hasValidAdminToken = ADMIN_TOKEN && authHeader === `Bearer ${ADMIN_TOKEN}`;
+
+    if (!hasValidToken && !hasValidAdminToken) {
+        return NextResponse.json(
+            { error: 'External API access denied. Provide valid Bearer token or session.' },
+            { status: 401 }
+        );
     }
 
     try {
@@ -21,13 +29,13 @@ export async function POST(req: Request) {
 
         const valRes = InputValidator.validate(message);
         if (!valRes.valid) {
-             await globalAuditLogger.log({
-                 agentName: 'API_INVOCATION',
-                 action: 'EXTERNAL_SECURITY_BLOCK',
-                 details: { reason: valRes.error, payload: message },
-                 riskLevel: 'high'
-             });
-             return NextResponse.json({ error: valRes.error }, { status: 403 });
+            await globalAuditLogger.log({
+                agentName: 'API_INVOCATION',
+                action: 'EXTERNAL_SECURITY_BLOCK',
+                details: { reason: valRes.error, payload: message },
+                riskLevel: 'high'
+            });
+            return NextResponse.json({ error: valRes.error }, { status: 403 });
         }
 
         const startingAgent = allAgents[agentName] || allAgents['Triage'];
@@ -36,7 +44,7 @@ export async function POST(req: Request) {
         };
 
         const response = await runSwarm(startingAgent, agentMemories, {}, 5, model, {});
-        
+
         const finalMessages = response.agentMemories[response.targetAgent.name] || [];
         const finalOutput = finalMessages[finalMessages.length - 1];
 

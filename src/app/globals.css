@@ -662,6 +662,18 @@ pre,
   animation-play-state: paused;
 }
 
+/* ─── Reverse ticker (FX/Crypto second row) ─────────────────────── */
+@keyframes ticker-scroll-rev {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+
 /* Hide scrollbar for webkit & firefox */
 .no-scrollbar {
   -ms-overflow-style: none;

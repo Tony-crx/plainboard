@@ -500,7 +500,12 @@ export async function fetchAllData(apiKeys?: ApiKeys) {
   tasks.push(fetchExchangeRates('USD').then(d => { if (d) results.fx = [d]; }).catch(() => { }));
   tasks.push(fetchDevTo('programming', 1, 10).then(d => { results.devto = d; }).catch(() => { }));
   tasks.push(fetchReddit('wallstreetbets', 10).then(d => { results.reddit = d; }).catch(() => { }));
-  tasks.push(fetchWorldBank('NY.GDP.MKTP.CD', 'ID').then(d => { results.wb = d; }).catch(() => { }));
+
+  // World Bank - multiple indicators
+  const wbIndicators = ['NY.GDP.MKTP.CD', 'FP.CPI.TOTL.ZG', 'SP.POP.TOTL', 'SL.UEM.TOTL.ZS', 'BX.KLT.DINV.CD.WD'];
+  tasks.push(Promise.all(wbIndicators.map(id => fetchWorldBank(id, 'ID'))).then(arrays => {
+    results.wb = arrays.flat();
+  }).catch(() => { results.wb = []; }));
 
   if (apiKeys?.fred) {
     tasks.push(Promise.all(FRED_IDS.map(id => fetchFredSeries(id, apiKeys.fred!))).then(d => { results.fred = d.filter(Boolean); }).catch(e => errors.push(`FRED: ${e.message}`)));

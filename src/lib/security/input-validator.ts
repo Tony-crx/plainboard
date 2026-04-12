@@ -7,26 +7,27 @@ export interface ValidationResult {
 
 const MALICIOUS_PATTERNS = [
   // XSS patterns
-  { pattern: /<script[^>]*>[\s\S]*?<\/script>/gi, type: 'xss', severity: 'critical' },
-  { pattern: /javascript:/gi, type: 'xss', severity: 'high' },
-  { pattern: /on\w+\s*=/gi, type: 'xss', severity: 'high' },
+  { pattern: /<script[^>]*>[\s\S]*?<\/script>/gi, type: 'xss', severity: 'critical', message: 'dangerous code execution' },
+  { pattern: /javascript:/gi, type: 'xss', severity: 'high', message: 'dangerous JavaScript protocol' },
+  { pattern: /on\w+\s*=/gi, type: 'xss', severity: 'high', message: 'dangerous event handler' },
 
   // Code injection
-  { pattern: /eval\s*\(/gi, type: 'injection', severity: 'critical' },
-  { pattern: /new\s+Function\s*\(/gi, type: 'injection', severity: 'critical' },
-  { pattern: /exec\s*\(/gi, type: 'injection', severity: 'high' },
-  { pattern: /system\s*\(/gi, type: 'injection', severity: 'high' },
+  { pattern: /eval\s*\(/gi, type: 'injection', severity: 'critical', message: 'dangerous code execution' },
+  { pattern: /new\s+Function\s*\(/gi, type: 'injection', severity: 'critical', message: 'dangerous function creation' },
+  { pattern: /exec\s*\(/gi, type: 'injection', severity: 'high', message: 'dangerous command execution' },
+  { pattern: /system\s*\(/gi, type: 'injection', severity: 'high', message: 'dangerous system call' },
+  { pattern: /require\s*\(/gi, type: 'injection', severity: 'high', message: 'dangerous module loading' },
 
   // Path traversal
-  { pattern: /\.\.\//gi, type: 'path_traversal', severity: 'medium' },
-  { pattern: /\.\.\\/gi, type: 'path_traversal', severity: 'medium' },
+  { pattern: /\.\.\//gi, type: 'path_traversal', severity: 'medium', message: 'potential path traversal' },
+  { pattern: /\.\.\\/gi, type: 'path_traversal', severity: 'medium', message: 'potential path traversal' },
 
   // SQL injection (basic patterns)
-  { pattern: /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b.*\b(FROM|INTO|TABLE|WHERE)\b)/gi, type: 'sql_injection', severity: 'high' },
-  { pattern: /(\bOR\b.*=.*)/gi, type: 'sql_injection', severity: 'medium' },
+  { pattern: /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b.*\b(FROM|INTO|TABLE|WHERE)\b)/gi, type: 'sql_injection', severity: 'high', message: 'potential SQL injection' },
+  { pattern: /(\bOR\b.*=.*)/gi, type: 'sql_injection', severity: 'medium', message: 'potential SQL injection' },
 
-  // Command injection
-  { pattern: /[;&|`$(){}[\]]/g, type: 'command_injection', severity: 'medium' },
+  // Command injection (excluding common safe characters for better UX)
+  { pattern: /[;&|`]/g, type: 'command_injection', severity: 'medium', message: 'potential command injection' },
 ];
 
 const MAX_LENGTH = 10000;
@@ -55,13 +56,13 @@ export function validateInput(input: string, options?: {
   }
 
   // Pattern matching
-  for (const { pattern, type, severity } of MALICIOUS_PATTERNS) {
+  for (const { pattern, type, severity, message } of MALICIOUS_PATTERNS) {
     if (pattern.test(input)) {
       // Skip certain patterns if HTML or code is allowed
       if (type === 'xss' && options?.allowHtml) continue;
       if (type === 'injection' && options?.allowCode) continue;
 
-      errors.push(`Potential ${type} detected`);
+      errors.push(message || `Potential ${type} detected`);
 
       if (severity === 'critical') {
         riskLevel = 'critical';
@@ -131,7 +132,15 @@ export class InputValidator {
   }
 
   static sanitize(input: string): string {
-    const result = validateInput(input);
-    return result.sanitized || input;
+    return escapeHtmlEntities(input);
   }
+}
+
+function escapeHtmlEntities(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }

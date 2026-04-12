@@ -98,7 +98,6 @@ function OptionCard({
   description,
   features,
   href,
-  accent,
   index,
 }: {
   icon: any;
@@ -107,7 +106,6 @@ function OptionCard({
   description: string;
   features: string[];
   href: string;
-  accent: string;
   index: number;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -121,8 +119,8 @@ function OptionCard({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       className={`group relative flex flex-col p-6 border transition-all duration-500 cursor-pointer ${hovered
-          ? `border-${accent}/60 bg-${accent}/5 shadow-[0_0_40px_rgba(255,0,0,0.08)]`
-          : 'border-red-900/20 bg-black/40 hover:border-red-900/40'
+        ? 'border-[#ff1a1a]/60 bg-[#ff1a1a]/5 shadow-[0_0_40px_rgba(255,0,0,0.08)]'
+        : 'border-red-900/20 bg-black/40 hover:border-red-900/40'
         }`}
       style={{
         clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
@@ -134,12 +132,12 @@ function OptionCard({
 
       {/* Icon + Label */}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2 border transition-colors duration-500 ${hovered ? `border-${accent}/40 bg-${accent}/10` : 'border-red-900/30 bg-black/30'
+        <div className={`p-2 border transition-colors duration-500 ${hovered ? 'border-[#ff1a1a]/40 bg-[#ff1a1a]/10' : 'border-red-900/30 bg-black/30'
           }`}>
-          <Icon size={20} className={hovered ? `text-${accent}` : 'text-red-500/60'} />
+          <Icon size={20} className={hovered ? 'text-[#ff1a1a]' : 'text-red-500/60'} />
         </div>
         <div>
-          <div className={`text-sm font-black tracking-[0.2em] uppercase transition-colors duration-500 ${hovered ? `text-${accent}` : 'text-red-500/80'
+          <div className={`text-sm font-black tracking-[0.2em] uppercase transition-colors duration-500 ${hovered ? 'text-[#ff1a1a]' : 'text-red-500/80'
             }`}>
             {label}
           </div>
@@ -158,8 +156,8 @@ function OptionCard({
           <span
             key={i}
             className={`px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-wider border transition-colors duration-500 ${hovered
-                ? 'border-[#ff1a1a]/30 text-gray-400 bg-[#ff1a1a]/5'
-                : 'border-red-900/15 text-gray-700 bg-black/20'
+              ? 'border-[#ff1a1a]/30 text-gray-400 bg-[#ff1a1a]/5'
+              : 'border-red-900/15 text-gray-700 bg-black/20'
               }`}
           >
             {f}
@@ -288,7 +286,6 @@ export default function Plainboard() {
             description="Multi-agent AI orchestration with real-time streaming, task delegation, and persistent memory. Chat with 6 specialized agents."
             features={['6 Agents', 'Real-Time Stream', 'Task Delegation', 'Memory System', 'Skill Engine']}
             href="/swarm"
-            accent="ff1a1a"
             index={0}
           />
           <OptionCard
@@ -298,7 +295,6 @@ export default function Plainboard() {
             description="Real-time intelligence dashboard with agent monitoring, live news feeds, market data, and system metrics."
             features={['Live Feeds', 'Market Data', 'Agent Matrix', 'News Engine', 'Command Bar']}
             href="/board"
-            accent="ff1a1a"
             index={1}
           />
         </div>

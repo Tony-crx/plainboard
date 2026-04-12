@@ -1,11 +1,23 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.SESSION_SECRET || 'cortisol-super-secret-key-00000000'
-);
+const SESSION_SECRET = process.env.SESSION_SECRET;
+
+// Use a placeholder during build, require it at runtime
+const secretValue = SESSION_SECRET || 'dev-placeholder';
+const SECRET_KEY = new TextEncoder().encode(secretValue);
+
+function ensureSecretConfigured(): void {
+  if (!SESSION_SECRET) {
+    throw new Error(
+      'SESSION_SECRET environment variable is required. ' +
+      'Set it in your .env.local file with a secure random string (at least 32 characters).'
+    );
+  }
+}
 
 export async function createSession(userId: string) {
+  ensureSecretConfigured();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const session = await new SignJWT({ userId, role: 'admin' })
     .setProtectedHeader({ alg: 'HS256' })

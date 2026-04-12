@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import "./globals.css";
@@ -25,6 +25,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Cortisol",
   },
+};
+
+export const viewport: Viewport = {
   themeColor: "#8b0000",
 };
 
