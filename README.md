@@ -88,4 +88,4 @@ Dashboard available at `/board`, Swarm Command at `/swarm`.
 
 ## ⚖️ License
 
-Private -- All rights reserved. Intellectual Property of the Swarm.
+MIT License -- Copyright (c) 2026 Tony
