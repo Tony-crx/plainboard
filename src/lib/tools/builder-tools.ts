@@ -42,8 +42,8 @@ export const projectScaffolderTool: Tool = {
     type: string; name: string; dir?: string; extras?: string
   }) => {
     try {
-      const SAFE_DIR = process.env.SAFE_DIR || path.join(process.cwd(), 'sandbox');
-      const baseDir = dir ? path.join(SAFE_DIR, dir) : SAFE_DIR;
+      const SAFE_DIR = process.env.SAFE_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), 'sandbox');
+      const baseDir = dir ? path.join(/*turbopackIgnore: true*/ SAFE_DIR, dir) : SAFE_DIR;
       const projectDir = path.join(baseDir, name);
       const features = extras ? extras.split(',').map(f => f.trim()) : [];
 

@@ -1,34 +1,22 @@
 import { Tool } from '@/lib/swarm/types';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { z } from 'zod';
+import { buildTool } from './tool-factory';
 
 const execAsync = promisify(exec);
 
 /**
  * Analyze code for issues
  */
-export const codeAnalyzeTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'code_analyze',
-    description: 'Analyze code for syntax errors, complexity, or issues. Runs linters or syntax checkers based on the detected language.',
-    parameters: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Source code to analyze'
-        },
-        language: {
-          type: 'string',
-          enum: ['javascript', 'typescript', 'python', 'bash', 'auto'],
-          description: 'Programming language (or "auto" to detect)'
-        }
-      },
-      required: ['code']
-    }
-  },
-  execute: async ({ code, language = 'auto' }: { code: string; language?: string }) => {
+export const codeAnalyzeTool: Tool = buildTool({
+  name: 'code_analyze',
+  description: 'Analyze code for syntax errors, complexity, or issues. Runs linters or syntax checkers based on the detected language.',
+  inputSchema: z.object({
+    code: z.string().describe('Source code to analyze'),
+    language: z.enum(['javascript', 'typescript', 'python', 'bash', 'auto']).default('auto').describe('Programming language (or "auto" to detect)')
+  }),
+  execute: async ({ code, language }) => {
     try {
       const lines = code.split('\n');
       const issues: string[] = [];
@@ -100,37 +88,20 @@ export const codeAnalyzeTool: Tool = {
       return `Code analysis error: ${err.message}`;
     }
   }
-};
+});
 
 /**
  * Format/minify code
  */
-export const codeFormatTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'code_format',
-    description: 'Format or minify code. Supports JSON prettification and basic code indentation.',
-    parameters: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Code to format'
-        },
-        action: {
-          type: 'string',
-          enum: ['prettify', 'minify', 'indent'],
-          description: 'Formatting action'
-        },
-        indentSize: {
-          type: 'number',
-          description: 'Indentation size (default: 2)'
-        }
-      },
-      required: ['code', 'action']
-    }
-  },
-  execute: async ({ code, action, indentSize = 2 }: { code: string; action: string; indentSize?: number }) => {
+export const codeFormatTool: Tool = buildTool({
+  name: 'code_format',
+  description: 'Format or minify code. Supports JSON prettification and basic code indentation.',
+  inputSchema: z.object({
+    code: z.string().describe('Code to format'),
+    action: z.enum(['prettify', 'minify', 'indent']).describe('Formatting action'),
+    indentSize: z.number().optional().default(2).describe('Indentation size')
+  }),
+  execute: async ({ code, action, indentSize }) => {
     try {
       switch (action) {
         case 'prettify': {
@@ -179,36 +150,20 @@ export const codeFormatTool: Tool = {
       return `Code format error: ${err.message}`;
     }
   }
-};
+});
 
 /**
  * Test regular expressions
  */
-export const regexTesterTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'regex_test',
-    description: 'Test a regular expression against input text. Shows matches, groups, and positions.',
-    parameters: {
-      type: 'object',
-      properties: {
-        pattern: {
-          type: 'string',
-          description: 'Regex pattern (without delimiters)'
-        },
-        text: {
-          type: 'string',
-          description: 'Text to test against'
-        },
-        flags: {
-          type: 'string',
-          description: 'Regex flags (e.g., "gi", "gm")'
-        }
-      },
-      required: ['pattern', 'text']
-    }
-  },
-  execute: async ({ pattern, text, flags = 'g' }: { pattern: string; text: string; flags?: string }) => {
+export const regexTesterTool: Tool = buildTool({
+  name: 'regex_test',
+  description: 'Test a regular expression against input text. Shows matches, groups, and positions.',
+  inputSchema: z.object({
+    pattern: z.string().describe('Regex pattern (without delimiters)'),
+    text: z.string().describe('Text to test against'),
+    flags: z.string().optional().default('g').describe('Regex flags (e.g., "gi", "gm")')
+  }),
+  execute: async ({ pattern, text, flags }) => {
     try {
       const regex = new RegExp(pattern, flags);
       const matches = [...text.matchAll(new RegExp(pattern, flags.includes('g') ? flags : flags + 'g'))];
@@ -232,37 +187,21 @@ export const regexTesterTool: Tool = {
       return `Regex error: ${err.message}`;
     }
   }
-};
+});
 
 /**
  * Git operations
  */
-export const gitOpsTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'git_ops',
-    description: 'Run git commands: status, log, diff, branch, show. Safe read-only operations only.',
-    parameters: {
-      type: 'object',
-      properties: {
-        command: {
-          type: 'string',
-          enum: ['status', 'log', 'diff', 'branch', 'show', 'tag'],
-          description: 'Git operation'
-        },
-        args: {
-          type: 'string',
-          description: 'Additional arguments (e.g., "-n 5" for log, branch name for diff)'
-        },
-        cwd: {
-          type: 'string',
-          description: 'Working directory (default: current directory)'
-        }
-      },
-      required: ['command']
-    }
-  },
-  execute: async ({ command, args = '', cwd = process.cwd() }: { command: string; args?: string; cwd?: string }) => {
+export const gitOpsTool: Tool = buildTool({
+  name: 'git_ops',
+  description: 'Run git commands: status, log, diff, branch, show. Safe read-only operations only.',
+  inputSchema: z.object({
+    command: z.enum(['status', 'log', 'diff', 'branch', 'show', 'tag']).describe('Git operation'),
+    args: z.string().optional().default('').describe('Additional arguments (e.g., "-n 5" for log, branch name for diff)'),
+    cwd: z.string().optional().describe('Working directory (default: current directory)')
+  }),
+  execute: async ({ command, args, cwd }) => {
+    const workingDir = cwd || process.cwd();
     try {
       // Only allow safe read-only commands
       const safeCommands: Record<string, string> = {
@@ -277,7 +216,7 @@ export const gitOpsTool: Tool = {
       const cmd = safeCommands[command];
       if (!cmd) return `Error: Unknown git command "${command}". Allowed: ${Object.keys(safeCommands).join(', ')}`;
 
-      const { stdout, stderr } = await execAsync(cmd, { cwd, timeout: 10000 });
+      const { stdout, stderr } = await execAsync(cmd, { cwd: workingDir, timeout: 10000 });
 
       if (stderr && !stdout) return `Git stderr: ${stderr}`;
       return stdout.trim() || 'No output.';
@@ -285,4 +224,4 @@ export const gitOpsTool: Tool = {
       return `Git error: ${err.message}`;
     }
   }
-};
+});

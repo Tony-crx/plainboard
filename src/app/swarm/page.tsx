@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Activity, ShieldAlert, Code2, Calculator, MessageSquare, Flame, Database, Settings2, Network, UserCog, BookOpen, Key, ChevronDown, Plus, Trash2, Download, ClipboardList, ScrollText, Terminal, Zap, Trophy, Clock, Eye } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Activity, ShieldAlert, Code2, Calculator, MessageSquare, Flame, Database, Settings2, Settings, X, Network, UserCog, BookOpen, Key, ChevronDown, Plus, Trash2, Download, ClipboardList, ScrollText, Terminal, Zap, Trophy, Clock, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { CompactSidebar } from '@/components/ui/compact-sidebar';
@@ -20,16 +21,19 @@ import { InputBar } from '@/components/ui/input-bar';
 import { exportConversationToMarkdown, calculateSessionTokenUsage, getLocalStorageUsage, shouldArchiveSession, getTotalMessageCount } from '@/lib/utils/export-utils';
 import { indexedDB, localStorageHelpers } from '@/lib/storage/indexeddb';
 import type { ErrorHistoryEntry } from '@/lib/storage/indexeddb';
-import { NeuralTopology3D, AgentNode3D, Connection3D } from '@/components/ui/neural-topology-3d';
-import { NeuralTopology2D, AgentNode2D, Connection2D } from '@/components/ui/neural-topology-2d';
-import { ActivityFeed, ActivityEntry } from '@/components/ui/activity-feed';
-import { MemoryBrowser } from '@/components/ui/memory-browser';
+const NeuralTopology3D = dynamic(() => import('@/components/ui/neural-topology-3d').then(m => m.NeuralTopology3D), { ssr: false });
+const NeuralTopology2D = dynamic(() => import('@/components/ui/neural-topology-2d').then(m => m.NeuralTopology2D), { ssr: false });
+const WarRoomVisualization = dynamic(() => import('@/components/ui/war-room-visual').then(m => m.WarRoomVisualization), { ssr: false });
+const ActivityFeed = dynamic(() => import('@/components/ui/activity-feed').then(m => m.ActivityFeed), { ssr: false });
+const MemoryBrowser = dynamic(() => import('@/components/ui/memory-browser').then(m => m.MemoryBrowser), { ssr: false });
+const TraceViewer = dynamic(() => import('@/components/ui/trace-viewer').then(m => m.TraceViewer), { ssr: false });
+const AgentCreator = dynamic(() => import('@/components/ui/agent-creator').then(m => m.AgentCreator), { ssr: false });
 import { useCostTracking } from '@/lib/utils/cost-tracker';
 import { validateInput } from '@/lib/security/input-validator';
 import { CommandPalette, useKeyboardShortcuts } from '@/components/ui/command-palette';
-import { TraceViewer } from '@/components/ui/trace-viewer';
-import { AgentCreator } from '@/components/ui/agent-creator';
-import { WarRoomVisualization } from '@/components/ui/war-room-visual';
+import type { AgentNode3D, Connection3D } from '@/components/ui/neural-topology-3d';
+import type { AgentNode2D, Connection2D } from '@/components/ui/neural-topology-2d';
+import type { ActivityEntry } from '@/components/ui/activity-feed';
 import { useMemoryCompression } from '@/lib/utils/memory-compression';
 import { TaskPanel } from '@/components/ui/task-panel';
 import { SessionSelector } from '@/components/ui/session-selector';
@@ -200,6 +204,10 @@ export default function SuperDashboard() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isCronManagerOpen, setIsCronManagerOpen] = useState(false);
   const [isThemeToggleVisible, setIsThemeToggleVisible] = useState(true);
+
+  // Deep Setting Agent Swarm Config
+  const [isDeepSettingsOpen, setIsDeepSettingsOpen] = useState(false);
+  const [globalWorkspaceDir, setGlobalWorkspaceDir] = useState<string>('/home/tony/crymos/climax');
 
   // Prompt templates
   const [selectedTemplate, setSelectedTemplate] = useState<PromptTemplate | null>(null);
@@ -1059,9 +1067,16 @@ export default function SuperDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMemories[targetAgent] || [],
-          model: selectedModel,
-          apiKeys: getApiKeysForModel()
+          agentMemories: updatedMemories,
+          activeAgentName: targetAgent,
+          selectedModel,
+          enabledAgents,
+          agentOverrides,
+          apiKeys: getApiKeysForModel(),
+          sessionId: activeSessionId || undefined,
+          contextVariables: {
+            workspaceDir: globalWorkspaceDir
+          }
         }),
         signal: controller.signal
       });
@@ -1546,7 +1561,7 @@ export default function SuperDashboard() {
             <NeuralTopology3D
               agents={topologyAgents}
               connections={topologyConnections}
-              onAgentClick={(agentId) => {
+              onAgentClick={(agentId: string) => {
                 setViewingAgent(agentId);
               }}
             />
@@ -1554,7 +1569,7 @@ export default function SuperDashboard() {
             <NeuralTopology2D
               agents={topology2DAgents}
               connections={topology2DConnections}
-              onAgentClick={(agentId) => {
+              onAgentClick={(agentId: string) => {
                 setViewingAgent(agentId);
               }}
             />
@@ -1708,6 +1723,14 @@ export default function SuperDashboard() {
             >
               <ShieldAlert size={12} />
               Audit
+            </button>
+            {/* Deep Settings */}
+            <button
+              onClick={() => setIsDeepSettingsOpen(true)}
+              className="px-3 py-2 bg-black/50 border border-red-900/40 text-red-500 hover:text-[#ff1a1a] hover:border-[#ff1a1a] transition-colors clip-angled font-black tracking-widest text-[10px] uppercase flex items-center gap-1 shadow-[0_0_10px_rgba(255,0,0,0.1)]"
+            >
+              <Settings size={12} />
+              Deep Set
             </button>
             <button
               onClick={() => setIsActivityFeedOpen(true)}
@@ -1891,7 +1914,7 @@ export default function SuperDashboard() {
         {isMemoryBrowserOpen && (
           <MemoryBrowser
             agentMemories={agentMemories}
-            onClear={(agent) => {
+            onClear={(agent: string) => {
               setAgentMemories(prev => ({ ...prev, [agent]: [] }));
             }}
             onClearAll={() => {
@@ -1935,7 +1958,7 @@ export default function SuperDashboard() {
       <AgentCreator
         isOpen={isAgentCreatorOpen}
         onClose={() => setIsAgentCreatorOpen(false)}
-        onSave={(agent) => {
+        onSave={(agent: { name: string; instructions: string; model: string; tools: string[]; temperature: number; maxTokens: number }) => {
           setCustomAgents(prev => [...prev, agent]);
           addActivity({
             type: 'success',
@@ -2020,6 +2043,62 @@ export default function SuperDashboard() {
         isOpen={isCronManagerOpen}
         onClose={() => setIsCronManagerOpen(false)}
       />
+
+      {/* Deep Setting Agent Swarm Config */}
+      {isDeepSettingsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-black border border-red-900/50 shadow-[0_0_50px_rgba(255,0,0,0.1)] custom-panel-glow p-6 clip-angled relative">
+            <button
+              onClick={() => setIsDeepSettingsOpen(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-red-900/30 pb-4 mb-6">
+              <Settings className="text-[#ff1a1a]" size={24} />
+              <h2 className="text-xl font-black tracking-[0.2em] text-[#ff1a1a] uppercase">Deep Setting Agent Swarm</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[10px] text-red-500/80 font-mono tracking-widest uppercase mb-2 flex items-center gap-2">
+                  <Database size={12} /> Workspace Sandboxing Directive
+                </label>
+                <div className="text-xs text-gray-400 mb-3 leading-relaxed">
+                  Defines the absolute physical directory (<code>SAFE_DIR</code>) the Swarm is allowed to interact with. Do not point this to root <code>/</code> or sensitive system directories. File Explorer and Executors will be securely constrained to this path.
+                </div>
+                <input
+                  type="text"
+                  value={globalWorkspaceDir}
+                  onChange={(e) => setGlobalWorkspaceDir(e.target.value)}
+                  className="w-full bg-black/60 border border-red-900/40 text-[#c4c4c4] p-3 font-mono text-sm focus:outline-none focus:border-[#ff1a1a] transition-colors font-bold"
+                  placeholder="/home/user/my_project"
+                />
+              </div>
+              
+              <div className="p-4 border border-red-900/20 bg-red-900/10">
+                <div className="flex items-center gap-2 text-orange-500 mb-2">
+                  <ShieldAlert size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Security Warning</span>
+                </div>
+                <p className="text-xs text-gray-500 font-mono">
+                  Bypassing the default <code>./sandbox</code> exposes your host machine&apos;s files to the Agent. Ensure you inherently trust the Task objectives and the AI&apos;s codebase modification patterns before pointing the workspace directly to your active repository.
+                </p>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-red-900/30">
+                <button
+                  onClick={() => setIsDeepSettingsOpen(false)}
+                  className="px-6 py-2 bg-[#ff1a1a]/10 hover:bg-[#ff1a1a]/20 border border-[#ff1a1a] text-[#ff1a1a] font-black uppercase text-[10px] tracking-widest transition-colors clip-angled shadow-[0_0_15px_rgba(255,0,0,0.2)]"
+                >
+                  Apply & Reload Context
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* War Room Visualization Toggle */}
       {

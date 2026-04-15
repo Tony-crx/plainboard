@@ -23,7 +23,7 @@ export async function* generateGroqChatCompletionStream(
   tools?: Tool[],
   apiKeys?: string[],
   abortSignal?: AbortSignal
-): AsyncGenerator<string, Message> {
+): AsyncGenerator<string | Message, void, unknown> {
   const keys = getGroqKeyManager();
   const apiKey = (apiKeys && apiKeys.length > 0) ? apiKeys[Math.floor(Math.random() * apiKeys.length)] : keys.getNextKey();
 
@@ -62,6 +62,7 @@ export async function* generateGroqChatCompletionStream(
   const reader = res.body?.getReader();
   const decoder = new TextDecoder();
   let fullContent = '';
+  let toolCalls: any[] = [];
   let buffer = '';
 
   try {
@@ -77,15 +78,31 @@ export async function* generateGroqChatCompletionStream(
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           if (data === '[DONE]') {
-            return { role: 'assistant', content: fullContent } as Message;
+            const finalMessage: Message = { role: 'assistant', content: fullContent };
+            if (toolCalls.length > 0) finalMessage.tool_calls = toolCalls;
+            yield finalMessage;
+            return;
           }
 
           try {
             const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullContent += delta;
-              yield delta;
+            const delta = parsed.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            if (delta.content) {
+              fullContent += delta.content;
+              yield delta.content;
+            }
+
+            if (delta.tool_calls) {
+              for (const tcCmd of delta.tool_calls) {
+                const idx = tcCmd.index;
+                if (!toolCalls[idx]) {
+                  toolCalls[idx] = { id: tcCmd.id, type: 'function', function: { name: tcCmd.function?.name || '', arguments: '' } };
+                }
+                if (tcCmd.function?.name) toolCalls[idx].function.name += tcCmd.function.name;
+                if (tcCmd.function?.arguments) toolCalls[idx].function.arguments += tcCmd.function.arguments;
+              }
             }
           } catch (e) {
             // Skip invalid JSON
@@ -100,7 +117,9 @@ export async function* generateGroqChatCompletionStream(
     throw error;
   }
 
-  return { role: 'assistant', content: fullContent } as Message;
+  const finalMessage: Message = { role: 'assistant', content: fullContent };
+  if (toolCalls.length > 0) finalMessage.tool_calls = toolCalls;
+  yield finalMessage;
 }
 
 export async function generateGroqChatCompletion(

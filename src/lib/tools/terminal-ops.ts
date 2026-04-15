@@ -3,10 +3,12 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
+import { z } from 'zod';
+import { buildTool } from './tool-factory';
 
 const execAsync = promisify(exec);
 
-const SAFE_DIR = process.env.SAFE_DIR || path.join(process.cwd(), 'sandbox');
+const SAFE_DIR = process.env.SAFE_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), 'sandbox');
 
 /**
  * Language runtime configuration
@@ -92,43 +94,20 @@ function isDangerous(code: string): string | null {
  * Multi-language Script Executor
  * Write and execute code in Python, Node.js, Bash, Go, Rust, Ruby, Perl, Deno
  */
-export const scriptExecutorTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'execute_script',
-    description: 'Write and execute code in multiple languages (bash, python, node, deno, go, rust, ruby, perl). Sandbox-isolated with security scanning.',
-    parameters: {
-      type: 'object',
-      properties: {
-        code: {
-          type: 'string',
-          description: 'Source code to execute'
-        },
-        language: {
-          type: 'string',
-          enum: ['bash', 'python', 'node', 'deno', 'go', 'rust', 'ruby', 'perl'],
-          description: 'Programming language runtime'
-        },
-        stdin: {
-          type: 'string',
-          description: 'Standard input to pipe to the script'
-        },
-        timeout: {
-          type: 'number',
-          description: 'Execution timeout in milliseconds (default: 15000, max: 30000)'
-        },
-        filename: {
-          type: 'string',
-          description: 'Optional filename for the script (default: auto-generated)'
-        }
-      },
-      required: ['code', 'language']
-    }
-  },
-  execute: async ({ code, language, stdin, timeout = 15000, filename }: {
-    code: string; language: string; stdin?: string; timeout?: number; filename?: string
-  }) => {
+export const scriptExecutorTool: Tool = buildTool({
+  name: 'execute_script',
+  description: 'Write and execute code in multiple languages (bash, python, node, deno, go, rust, ruby, perl). Sandbox-isolated with security scanning.',
+  inputSchema: z.object({
+    code: z.string().describe('Source code to execute'),
+    language: z.enum(['bash', 'python', 'node', 'deno', 'go', 'rust', 'ruby', 'perl']).describe('Programming language runtime'),
+    stdin: z.string().optional().describe('Standard input to pipe to the script'),
+    timeout: z.number().default(15000).describe('Execution timeout in milliseconds'),
+    filename: z.string().optional().describe('Optional filename for the script')
+  }),
+  execute: async ({ code, language, stdin, timeout = 15000, filename }, context) => {
     try {
+      const activeSandbox = context?.variables?.workspaceDir || SAFE_DIR;
+
       // Safety gate
       const threat = isDangerous(code);
       if (threat) return `[SECURITY] ${threat}`;
@@ -137,16 +116,16 @@ export const scriptExecutorTool: Tool = {
       if (!runtime) return `[ERROR] Unsupported language: ${language}. Supported: ${Object.keys(RUNTIMES).join(', ')}`;
 
       // Ensure sandbox exists
-      await fs.mkdir(SAFE_DIR, { recursive: true });
+      await fs.mkdir(activeSandbox, { recursive: true });
 
       // Write script file
       const scriptName = filename || `script_${Date.now()}.${runtime.ext}`;
-      const scriptPath = path.join(SAFE_DIR, scriptName);
+      const scriptPath = path.join(activeSandbox, scriptName);
       await fs.writeFile(scriptPath, code, 'utf-8');
 
       // Check runtime availability
       try {
-        await execAsync(runtime.check, { timeout: 5000, cwd: SAFE_DIR });
+        await execAsync(runtime.check, { timeout: 5000, cwd: activeSandbox });
       } catch (err: any) {
         return `[RUNTIME ERROR] ${language} is not installed: ${err.message}`;
       }
@@ -154,7 +133,7 @@ export const scriptExecutorTool: Tool = {
       // Build execution command
       const command = runtime.run(scriptPath);
       const execOptions: any = {
-        cwd: SAFE_DIR,
+        cwd: activeSandbox,
         timeout: Math.min(timeout, 30000),
         maxBuffer: 1024 * 1024, // 1MB output buffer
       };
@@ -169,7 +148,7 @@ export const scriptExecutorTool: Tool = {
 
       let output = `═══ ${language.toUpperCase()} SCRIPT EXECUTION ═══\n`;
       output += `Duration: ${duration}ms\n`;
-      output += `Sandbox: ${SAFE_DIR}\n`;
+      output += `Sandbox: ${activeSandbox}\n`;
       output += `══════════════════════════════════\n\n`;
 
       if (stdout) output += `[STDOUT]\n${stdout}\n`;
@@ -188,54 +167,28 @@ export const scriptExecutorTool: Tool = {
       return `[EXECUTION ERROR]\n${message}`;
     }
   }
-};
+});
 
 /**
  * File System Explorer — advanced file operations with tree view, search, and analysis
  */
-export const fileExplorerTool: Tool = {
-  type: 'function',
-  function: {
-    name: 'file_explorer',
-    description: 'Advanced file system operations: directory tree, file read/write/delete, search files by name/content, file info, move, copy.',
-    parameters: {
-      type: 'object',
-      properties: {
-        operation: {
-          type: 'string',
-          enum: ['tree', 'read', 'write', 'delete', 'list', 'info', 'move', 'copy', 'search_name', 'search_content', 'mkdir'],
-          description: 'File operation to perform'
-        },
-        path: {
-          type: 'string',
-          description: 'Target file or directory path (relative to sandbox)'
-        },
-        content: {
-          type: 'string',
-          description: 'Content to write (for write operation)'
-        },
-        target: {
-          type: 'string',
-          description: 'Destination path (for move/copy)'
-        },
-        query: {
-          type: 'string',
-          description: 'Search query (for search_name: filename pattern, for search_content: text to find)'
-        },
-        maxDepth: {
-          type: 'number',
-          description: 'Max directory depth for tree (default: 5)'
-        }
-      },
-      required: ['operation']
-    }
-  },
-  execute: async ({ operation, path: targetPath = '.', content, target, query, maxDepth = 5 }: {
-    operation: string; path?: string; content?: string; target?: string; query?: string; maxDepth?: number
-  }) => {
+export const fileExplorerTool: Tool = buildTool({
+  name: 'file_explorer',
+  description: 'Advanced file system operations: directory tree, file read/write/delete, search files by name/content, file info, move, copy.',
+  inputSchema: z.object({
+    operation: z.enum(['tree', 'read', 'write', 'delete', 'list', 'info', 'move', 'copy', 'search_name', 'search_content', 'mkdir']).describe('File operation to perform'),
+    path: z.string().optional().default('.').describe('Target file or directory path (relative to sandbox)'),
+    content: z.string().optional().describe('Content to write (for write operation)'),
+    target: z.string().optional().describe('Destination path (for move/copy)'),
+    query: z.string().optional().describe('Search query (for search_name: filename pattern, for search_content: text to find)'),
+    maxDepth: z.number().optional().default(5).describe('Max directory depth for tree (default: 5)')
+  }),
+  execute: async ({ operation, path: targetPath = '.', content, target, query, maxDepth = 5 }, context) => {
     try {
-      const resolvedBase = path.resolve(SAFE_DIR, targetPath.replace(/^(\.\.(\/|\\|$))+/, ''));
-      if (!resolvedBase.startsWith(SAFE_DIR)) {
+      const activeWorkspace = context?.variables?.workspaceDir || SAFE_DIR;
+
+      const resolvedBase = path.resolve(activeWorkspace, targetPath.replace(/^(\.\.(\/|\\|$))+/, ''));
+      if (!resolvedBase.startsWith(activeWorkspace)) {
         return `[SECURITY] Path traversal blocked. Escaped sandbox.`;
       }
 
@@ -328,16 +281,16 @@ export const fileExplorerTool: Tool = {
 
         case 'move': {
           if (!target) return 'Error: target parameter required for move';
-          const resolvedTarget = path.resolve(SAFE_DIR, target.replace(/^(\.\.(\/|\\|$))+/, ''));
-          if (!resolvedTarget.startsWith(SAFE_DIR)) return '[SECURITY] Move target outside sandbox';
+          const resolvedTarget = path.resolve(activeWorkspace, target.replace(/^(\.\.(\/|\\|$))+/, ''));
+          if (!resolvedTarget.startsWith(activeWorkspace)) return '[SECURITY] Move target outside sandbox';
           await fs.rename(resolvedBase, resolvedTarget);
           return `✅ Moved: ${resolvedBase} → ${resolvedTarget}`;
         }
 
         case 'copy': {
           if (!target) return 'Error: target parameter required for copy';
-          const resolvedTarget = path.resolve(SAFE_DIR, target.replace(/^(\.\.(\/|\\|$))+/, ''));
-          if (!resolvedTarget.startsWith(SAFE_DIR)) return '[SECURITY] Copy target outside sandbox';
+          const resolvedTarget = path.resolve(activeWorkspace, target.replace(/^(\.\.(\/|\\|$))+/, ''));
+          if (!resolvedTarget.startsWith(activeWorkspace)) return '[SECURITY] Copy target outside sandbox';
           await fs.cp(resolvedBase, resolvedTarget, { recursive: true });
           return `✅ Copied: ${resolvedBase} → ${resolvedTarget}`;
         }
@@ -368,7 +321,7 @@ export const fileExplorerTool: Tool = {
       return `[FILE ERROR] ${err.message}`;
     }
   }
-};
+});
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';

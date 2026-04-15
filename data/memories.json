@@ -278,5 +278,25 @@
     "tags": [
       "Coordinator"
     ]
+  },
+  {
+    "id": "d36de300-2681-42cf-b958-9fef6e0cc719",
+    "agentName": "Coder",
+    "content": "User: semua nya bersatu dan buatkan aku software catatan\nCoder: We need to create a new project.",
+    "timestamp": 1776269933793,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
+  },
+  {
+    "id": "7f1a7e04-d339-4137-acaa-f179e12f3d79",
+    "agentName": "Coder",
+    "content": "User: buatkan gw software catatan\nCoder: We are not going to be able to get a lot of money out of the way.",
+    "timestamp": 1776271010580,
+    "priority": "medium",
+    "tags": [
+      "Coder"
+    ]
   }
 ]

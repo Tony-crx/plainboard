@@ -29,10 +29,8 @@ import { fetchCommodityPrices } from '@/lib/data/commodities';
 import { fetchUpcomingIPOs, fetchRecentIPOs } from '@/lib/data/ipo-calendar';
 import { calculateSectorPerformance, fetchMostActiveStocks } from '@/lib/data/sectors';
 import { NewsRail } from '@/components/board/news-rail';
-import {
-  BloombergHomeView,
-  MarketStatusStrip,
-} from '@/components/board/home-view';
+const BloombergHomeView = dynamic(() => import('@/components/board/home-view').then(m => m.BloombergHomeView), { loading: () => <LoadingTab /> });
+const MarketStatusStrip = dynamic(() => import('@/components/board/home-view').then(m => m.MarketStatusStrip), { ssr: false });
 
 // ─── Lazy tabs ────────────────────────────────────────────────────────────────
 const ApiKeyManager       = dynamic(() => import('@/components/ui/api-key-manager').then(m => ({ default: m.ApiKeyManager })), { ssr: false });
@@ -859,13 +857,24 @@ export default function TheBoard() {
   }, []);
 
   useEffect(() => {
+    // Stage 1: Critical data
     fetchAll();
-    fetchSupportData();
+    
+    // Stage 2: Support data (staggered by 2s to allow render to settle)
+    const t = setTimeout(fetchSupportData, 2000);
+    
     const i1 = setInterval(fetchAll, 120000);
     const i2 = setInterval(fetchSupportData, 300000);
+    
     // News auto-refresh every 30s
     const i3 = setInterval(() => { newsRefreshRef.current?.(); }, 30000);
-    return () => { clearInterval(i1); clearInterval(i2); clearInterval(i3); };
+    
+    return () => { 
+      clearTimeout(t);
+      clearInterval(i1); 
+      clearInterval(i2); 
+      clearInterval(i3); 
+    };
   }, [fetchAll, fetchSupportData]);
 
   const handleNewsRefresh = useCallback(() => {

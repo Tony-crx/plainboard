@@ -1,0 +1,17 @@
+{
+  "name": "catatan",
+  "version": "0.1.0",
+  "bin": {
+    "catatan": "./bin/cli.js"
+  },
+  "dependencies": {
+    "commander": "^12",
+    "chalk": "^5",
+    "ora": "^8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5",
+    "tsx": "^4"
+  }
+}

@@ -191,7 +191,8 @@ export default function Plainboard() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // Removed hydration blocking for better perceived performance
+  // if (!mounted) return null;
 
   return (
     <div className="relative h-screen w-screen bg-black overflow-hidden flex flex-col">
